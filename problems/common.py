@@ -26,6 +26,7 @@ def get_problem_options():
         ('re5', RE5),
         ('re6', RE6),
         ('re7', RE7),
+        ('mixingproblem', MixingProblem)
     ]
     return problems
 
