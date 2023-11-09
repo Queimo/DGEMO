@@ -9,6 +9,50 @@ import pandas as pd
 from arguments import get_vis_args
 from utils import get_problem_dir, get_algo_names, defaultColors
 
+def plotly_grid_plotter(figures=[], path="grid_plots.html", ncols=3):
+
+    # Start HTML string with doctype and head including CSS styles
+    html_string = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8" />
+    <title>Plotly Plots</title>
+    <style>
+    /* Add CSS to style the plot containers */
+    .grid-container {
+    display: grid;
+    """\
+    + f"grid-template-columns: repeat({ncols}, 1fr);" + \
+    """
+    grid-gap: 10px; /* space between plots */
+    }
+    .grid-item {
+    margin: 10px;
+    }
+    </style>
+    </head>
+    <body>
+    <div class="grid-container">
+    """
+
+    # Add the HTML for each figure wrapped in div.grid-item
+    for fig in figures:
+        
+        fig_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+        html_string += f'<div class="grid-item">{fig_html}</div>'
+
+    # Close div.grid-container and body/html tags
+    html_string += """
+    </div>
+    </body>
+    </html>
+    """
+
+    # Write the HTML to a file
+    with open(path, 'w') as file:
+        file.write(html_string)
+
 
 def main():
     # get argument values and initializations
@@ -347,7 +391,8 @@ def main():
             autosize = False
         )
         
-        fig[kk].show()
+        # fig[kk].show()
+        # fig[kk].write_html(f'{algo_names[kk]}PerformanceSpace.html')
 
         # number of families in each iteration
         if has_family:
@@ -362,7 +407,8 @@ def main():
                 niter += 1
 
             print('Number of families in ' + algo_names[kk] + ' through generations: ' + ','.join(nf_str))
-
+    plotly_grid_plotter(fig, f'./result/{args.problem}/{args.subfolder}/{args.problem}_performance_space.html', ncols=2 if n_algo > 1 else 1)
+    
 
 if __name__ == '__main__':
     main()

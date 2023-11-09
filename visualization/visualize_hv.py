@@ -64,8 +64,8 @@ def main():
     # calculate proper range of plot
     minHV = min([min(df.min()) for df in df_HV_list])
     maxHV = max([max(df.max()) for df in df_HV_list])
-    minAvgHV = np.min(avgHV_all)
-    maxAvgHV = np.max(avgHV_all)
+    minAvgHV = np.min([np.min(avgHV_all[i]) for i in range(n_algo)])   
+    maxAvgHV = np.max([np.max(avgHV_all[i]) for i in range(n_algo)])
 
     for i in range(n_algo):
         print(f'{args.problem}: {algo_names[i]} average HV indicator after {num_alg_eval} evaluations: {avgHV[i]}')
@@ -108,6 +108,7 @@ def main():
         fig.write_image(f'{args.problem}_hv.png')
     else:
         fig.show()
+        fig.write_html(f'./result/{args.problem}/{args.subfolder}/{args.problem}_hv.html')
 
 
 if __name__ == '__main__':
