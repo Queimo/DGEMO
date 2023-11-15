@@ -14,19 +14,19 @@ def get_general_args(args=None):
     '''
     parser = ArgumentParser()
 
-    parser.add_argument('--problem', type=str, default='dtlz1', 
+    parser.add_argument('--problem', type=str, default='mixingproblem', 
         help='optimization problem')
-    parser.add_argument('--n-var', type=int, default=6, 
+    parser.add_argument('--n-var', type=int, default=2, 
         help='number of design variables')
     parser.add_argument('--n-obj', type=int, default=2, 
         help='number of objectives')
-    parser.add_argument('--n-init-sample', type=int, default=50, 
+    parser.add_argument('--n-init-sample', type=int, default=5, 
         help='number of initial design samples')
-    parser.add_argument('--n-iter', type=int, default=20, 
+    parser.add_argument('--n-iter', type=int, default=10, 
         help='number of optimization iterations')
     parser.add_argument('--ref-point', type=float, nargs='+', default=None, 
         help='reference point for calculating hypervolume')
-    parser.add_argument('--batch-size', type=int, default=10, 
+    parser.add_argument('--batch-size', type=int, default=1, 
         help='size of the selected batch in one iteration')
 
     parser.add_argument('--seed', type=int, default=0, 
@@ -34,7 +34,7 @@ def get_general_args(args=None):
     parser.add_argument('--n-seed', type=int, default=1,
         help='number of random seeds / test runs')
 
-    parser.add_argument('--algo', type=str, default='dgemo',
+    parser.add_argument('--algo', type=str, default='tsemo',
         help='type of algorithm to use with some predefined arguments, or custom arguments')
 
     parser.add_argument('--subfolder', type=str, default='default',
@@ -104,7 +104,7 @@ def get_solver_args(args=None):
         help='method to init population')
     parser.add_argument('--n-process', type=int, default=cpu_count(),
         help='number of processes to be used for parallelization')
-    parser.add_argument('--batch-size', type=int, default=20, 
+    parser.add_argument('--batch-size', type=int, default=1, 
         help='size of the selected batch in one iteration')
 
     # ParetoDiscovery solver
@@ -139,7 +139,7 @@ def get_selection_args(args=None):
 
     parser.add_argument('--selection', type=str, default='hvi', 
         help='type of selection method for new batch')
-    parser.add_argument('--batch-size', type=int, default=10, 
+    parser.add_argument('--batch-size', type=int, default=1, 
         help='size of the selected batch in one iteration')
 
     args, _ = parser.parse_known_args(args)

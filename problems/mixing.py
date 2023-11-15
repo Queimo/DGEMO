@@ -19,6 +19,29 @@ class MixingProblem(Problem):
         for i in range(x.shape[0]):
             Z[i, :] = self.run_simulation(Q_gas[i], Q_liquid[i])
         return Z
+    
+    def _calc_pareto_front(self, n_pareto_points=100):
+        
+        raise Exception("Pareto front is not known for this problem!")
+        from .common import generate_initial_samples, get_problem
+        from mobo.solver import NSGA2Solver
+        from arguments import get_solver_args
+         
+        prob = get_problem('mixingproblem')
+        X_init, Y_init = generate_initial_samples(prob, n_pareto_points)
+        
+        #namespace to dict
+        solver_args = vars(get_solver_args())
+        
+        
+        solver = NSGA2Solver(**solver_args)
+
+        # find Pareto front
+        solution = solver.solve(prob, X_init, Y_init)
+        
+        Y_paretos = solution['y']
+        return Y_paretos
+
         
     def run_simulation(self, Q_gas=0.5, Q_liquid=8, R=0.5e-3, L=0.05):
         
@@ -29,18 +52,36 @@ class MixingProblem(Problem):
         C_I_0 = 0.05  # Initial concentration of KI in stream 1 (M)
         C_IO3_0 = 0.01  # Initial concentration of KIO3 in stream 1 (M)
         C_H3BO3_0 = 0.25  # Initial concentration of *added* H3BO3 in stream 1 (M)
+        C_H2BO3_0 = C_H3BO3_0 / 2
         C_H_0 = 0.05625  # Initial concentration of H+ in stream 2 (M)
         
         f_result, time_result, k2_result, Da2_result = self.solve_model(mixing.item(), C_H_0=C_H_0, C_I_0=C_I_0, C_IO3_0=C_IO3_0, C_H3BO3_0=C_H3BO3_0)
         
         I3_result = f_result[4][-1] * C_H_0
 
+        f_H = f_result[0]
+        f_I = f_result[1]
+        f_IO3 = f_result[2]
+        f_I2 = f_result[3]
+        f_I3 = f_result[4]
+        
+        # MATLAB Code
+        # Y = 2*V2*(I2_end)/(V1*C_H_0);
+        # Yst = 6*C_IO3_0/C_H2BO3_0/(6*C_IO3_0/C_H2BO3_0+1);
+        # Xs = Y/Yst;
+        
+        #Python Code
+        Y = 2 * 0.01 * f_I2[-1] / (0.01 * C_H_0)
+        Yst = 6 * C_IO3_0 / C_H2BO3_0 / (6 * C_IO3_0 / C_H2BO3_0 + 1)
+        Xs = Y/Yst
+        I3_result = f_result[4][-1] * C_H_0
+        
         # print(f"Mixing time =  {mixing.item()}")
         # print(f"[I3] after reaction = {I3_result}")
         # print(f"Interfacial shear rate = {tr_i}")
         # print(f"Pressure drop = {dP_t}")
 
-        return mixing, dP_t
+        return Xs, dP_t
 
     def mixing_time(self, Q_gas, Q_liquid, R=0.5e-3, L=0.05):
         """
@@ -402,3 +443,9 @@ class MixingProblem(Problem):
             Da2_values,
         )
 
+
+#test pareto front calculation
+if __name__ == "__main__":
+    prob = MixingProblem()
+    true_front = prob.pareto_front()
+    print(true_front)

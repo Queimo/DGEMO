@@ -96,7 +96,9 @@ def build_problem(name, n_var, n_obj, n_init_sample, n_process=1):
             raise NotImplementedError('problem not supported yet!')
         try:
             pareto_front = problem.pareto_front()
-        except:
+        except Exception as e:
+            print('no true pareto front defined for this problem!')
+            print(e)
             pareto_front = None
 
     # get initial samples
