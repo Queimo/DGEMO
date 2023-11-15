@@ -74,7 +74,17 @@ class Custom(MOBO):
     Totally rely on user arguments to specify each component
     '''
     config = None
-
+    
+    
+class PSL(MOBO):
+    
+    config = {
+        'surrogate': 'gp',
+        'acquisition': 'identity',
+        'solver': 'psl',
+        'selection': 'hvi',
+    }
+        
 
 def get_algorithm(name):
     '''
@@ -87,5 +97,6 @@ def get_algorithm(name):
         'moead-ego': MOEAD_EGO,
         'parego': ParEGO,
         'custom': Custom,
+        'psl': PSL,
     }
     return algo[name]

@@ -11,6 +11,12 @@ from mobo.utils import safe_divide
 
 
 class GaussianProcess(SurrogateModel):
+    
+    def warn(*args, **kwargs):
+        pass
+    import warnings
+    warnings.warn = warn
+    
     '''
     Gaussian process
     '''
@@ -62,14 +68,14 @@ class GaussianProcess(SurrogateModel):
             F.append(y_mean) # y_mean: shape (N,)
 
             if std:
-                if gp._K_inv is None:
-                    L_inv = solve_triangular(gp.L_.T,
+                
+                L_inv = solve_triangular(gp.L_.T,
                                                 np.eye(gp.L_.shape[0]))
-                    gp._K_inv = L_inv.dot(L_inv.T)
+                K_inv = L_inv.dot(L_inv.T)
 
                 y_var = gp.kernel_.diag(X)
                 y_var -= np.einsum("ij,ij->i",
-                                    np.dot(K, gp._K_inv), K)
+                                    np.dot(K, K_inv), K)
 
                 y_var_negative = y_var < 0
                 if np.any(y_var_negative):
@@ -111,11 +117,17 @@ class GaussianProcess(SurrogateModel):
                 # TODO: check
                 if std:
                     K = np.expand_dims(K, 1) # K: shape (N, 1, N_train)
-                    K_Ki = K @ gp._K_inv # gp._K_inv: shape (N_train, N_train), K_Ki: shape (N, 1, N_train)
-                    dK_Ki = dK_T @ gp._K_inv # dK_Ki: shape (N, n_var, N_train)
+                    K_Ki = K @ K_inv # gp._K_inv: shape (N_train, N_train), K_Ki: shape (N, 1, N_train)
+                    dK_Ki = dK_T @ K_inv # dK_Ki: shape (N, n_var, N_train)
 
                     dy_var = -np.sum(dK_Ki * K + K_Ki * dK_T, axis=2) # dy_var: shape (N, n_var)
-                    dy_std = 0.5 * safe_divide(dy_var, y_std) # dy_std: shape (N, n_var)
+                    #print(dy_var.shape)
+                    #print(np.expand_dims(y_std,1).shape)
+                    #dy_std = 0.5 * safe_divide(dy_var, y_std) # dy_std: shape (N, n_var)
+                    if np.min(y_std) != 0:
+                        dy_std = 0.5 * dy_var / np.expand_dims(y_std,1) # dy_std: shape (N, n_var)
+                    else:
+                        dy_std=np.zeros(dy_var.shape)
                     dS.append(dy_std)
 
             if calc_hessian:
@@ -147,7 +159,7 @@ class GaussianProcess(SurrogateModel):
                     K = np.expand_dims(K, 2) # K: shape (N, 1, 1, N_train)
                     dK = np.expand_dims(dK_T, 2) # dK: shape (N, n_var, 1, N_train)
                     dK_Ki = np.expand_dims(dK_Ki, 2) # dK_Ki: shape (N, n_var, 1, N_train)
-                    hK_Ki = hK_T @ gp._K_inv # hK_Ki: shape (N, n_var, n_var, N_train)
+                    hK_Ki = hK_T @ K_inv # hK_Ki: shape (N, n_var, n_var, N_train)
 
                     hy_var = -np.sum(hK_Ki * K + 2 * dK_Ki * dK + K_Ki * hK_T, axis=3) # hy_var: shape (N, n_var, n_var)
                     hy_std = 0.5 * safe_divide(hy_var * y_std - dy_var * dy_std, y_var) # hy_std: shape (N, n_var, n_var)
