@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from mobo.utils import find_pareto_front, calc_hypervolume
 from utils import get_result_dir
+import wandb
 
 '''
 Export csv files for external visualization.
@@ -192,3 +193,12 @@ class DataExport:
 
         export_tf = pd.DataFrame(data=d)
         export_tf.to_csv(filepath, index=False)
+    
+    def get_wandb_data(self, args=None):
+        '''
+        Get data for wandb logging.
+        '''
+        data = {}
+        data['iter'] = self.iter
+        data['hypervolume'] = self.export_data['Hypervolume_indicator'].iloc[-1]    
+        return data
