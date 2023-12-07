@@ -1,0 +1,174 @@
+name: mobo
+channels:
+- conda-forge
+- pkgs/main
+- plotly
+dependencies:
+- _libgcc_mutex=0.1=main
+- _openmp_mutex=5.1=1_gnu
+- appdirs=1.4.4=pyh9f0ad1d_0
+- astroid=2.3.3=py37_0
+- blas=1.0=mkl
+- brotli-python=1.0.9=py37hd23a5d3_7
+- ca-certificates=2020.1.1=0
+- certifi=2019.11.28=py37_1
+- charset-normalizer=3.3.2=pyhd8ed1ab_0
+- click=8.1.3=py37h89c1867_0
+- docker-pycreds=0.4.0=py_0
+- gitdb=4.0.11=pyhd8ed1ab_0
+- gitpython=3.1.40=pyhd8ed1ab_0
+- idna=3.6=pyhd8ed1ab_0
+- importlib-metadata=4.11.4=py37h89c1867_0
+- intel-openmp=2020.0=166
+- isort=4.3.21=py37_0
+- lazy-object-proxy=1.4.3=py37h27cfd23_2
+- ld_impl_linux-64=2.38=h1181459_1
+- libedit=3.1.20181209=hc058e9b_0
+- libffi=3.2.1=hf484d3e_1007
+- libgcc-ng=11.2.0=h1234567_1
+- libgomp=11.2.0=h1234567_1
+- libprotobuf=3.20.1=h6239696_0
+- libstdcxx-ng=11.2.0=h1234567_1
+- libzlib=1.2.11=h166bdaf_1014
+- mccabe=0.6.1=py37h06a4308_2
+- mkl=2020.0=166
+- mkl-service=2.3.0=py37he8ac12f_0
+- mkl_fft=1.0.15=py37ha843d7b_0
+- mkl_random=1.1.0=py37hd6b4f25_0
+- ncurses=6.2=he6710b0_1
+- numpy=1.19.2=py37h54aff64_0
+- numpy-base=1.19.2=py37hfa32c7d_0
+- openssl=1.1.1f=h7b6447c_0
+- pathtools=0.1.2=py_1
+- pip=20.0.2=py37_3
+- plotly-orca=1.3.1=1
+- protobuf=3.20.1=py37hd23a5d3_0
+- psutil=5.9.1=py37h540881e_0
+- pylint=2.4.4=py37_0
+- pysocks=1.7.1=py37h89c1867_5
+- python=3.7.7=hcf32534_0_cpython
+- python_abi=3.7=4_cp37m
+- pyyaml=6.0=py37h540881e_4
+- readline=8.0=h7b6447c_0
+- setproctitle=1.2.3=py37h540881e_0
+- setuptools=46.1.3=py37_0
+- six=1.14.0=py37h06a4308_0
+- smmap=5.0.0=pyhd8ed1ab_0
+- sqlite=3.31.1=h62c20be_1
+- tk=8.6.8=hbc83047_0
+- typing_extensions=4.7.1=pyha770c72_0
+- urllib3=2.1.0=pyhd8ed1ab_0
+- wandb=0.16.1=pyhd8ed1ab_0
+- wheel=0.34.2=py37_0
+- wrapt=1.12.1=py37h7b6447c_1
+- xz=5.2.4=h14c3975_4
+- zipp=3.15.0=pyhd8ed1ab_0
+- zlib=1.2.11=h166bdaf_1014
+- pip:
+  - about-time==4.2.1
+  - alabaster==0.7.12
+  - alive-progress==3.1.4
+  - appdirs==1.4.4
+  - astroid==2.3.3
+  - autograd==1.6.2
+  - Babel==2.8.0
+  - backcall==0.2.0
+  - Brotli==1.0.9
+  - certifi==2019.11.28
+  - chardet==3.0.4
+  - charset-normalizer==3.3.2
+  - click==8.1.3
+  - cma==2.7.0
+  - cycler==0.10.0
+  - Cython==3.0.5
+  - debugpy==1.7.0
+  - decorator==5.1.1
+  - Deprecated==1.2.14
+  - dill==0.3.7
+  - docker-pycreds==0.4.0
+  - docutils==0.16
+  - entrypoints==0.4
+  - future==0.18.2
+  - gitdb==4.0.11
+  - GitPython==3.1.40
+  - grapheme==0.6.0
+  - idna==3.6
+  - imagesize==1.2.0
+  - importlib-metadata==4.11.4
+  - ipykernel==6.16.2
+  - ipython==7.34.0
+  - isort==4.3.21
+  - jedi==0.19.1
+  - Jinja2==2.11.1
+  - joblib==0.14.1
+  - jupyter-client==7.4.9
+  - jupyter-core==4.12.0
+  - kiwisolver==1.2.0
+  - lazy-object-proxy==1.4.3
+  - MarkupSafe==1.1.1
+  - matplotlib==3.2.1
+  - matplotlib-inline==0.1.6
+  - mccabe==0.6.1
+  - mkl-fft==1.0.15
+  - mkl-random==1.1.0
+  - mkl-service==2.3.0
+  - nest-asyncio==1.5.8
+  - numpy==1.18.0
+  - numpydoc==0.9.2
+  - nvidia-cublas-cu11==11.10.3.66
+  - nvidia-cuda-nvrtc-cu11==11.7.99
+  - nvidia-cuda-runtime-cu11==11.7.99
+  - nvidia-cudnn-cu11==8.5.0.96
+  - packaging==20.3
+  - pandas==1.0.3
+  - parso==0.8.3
+  - pathtools==0.1.2
+  - pexpect==4.8.0
+  - pickleshare==0.7.5
+  - Pillow==9.5.0
+  - plotly==4.7.1
+  - prompt-toolkit==3.0.39
+  - protobuf==3.20.1
+  - psutil==5.9.6
+  - ptyprocess==0.7.0
+  - pyDOE2==1.3.0
+  - pygco==0.0.16
+  - Pygments==2.6.1
+  - pylint==2.4.4
+  - pymoo==0.4.0
+  - pymop==0.2.4
+  - pyparsing==2.4.6
+  - PySocks==1.7.1
+  - python-dateutil==2.8.2
+  - pytz==2019.3
+  - PyYAML==6.0.1
+  - pyzmq==25.1.1
+  - requests==2.31.0
+  - retrying==1.3.3
+  - scikit-learn==0.22.2.post1
+  - scipy==1.4.1
+  - sentry-sdk==1.38.0
+  - setproctitle==1.2.3
+  - six==1.14.0
+  - smmap==5.0.0
+  - smt==0.4.3
+  - snowballstemmer==2.0.0
+  - Sphinx==2.4.4
+  - sphinxcontrib-applehelp==1.0.2
+  - sphinxcontrib-devhelp==1.0.2
+  - sphinxcontrib-htmlhelp==1.0.3
+  - sphinxcontrib-jsmath==1.0.1
+  - sphinxcontrib-qthelp==1.0.3
+  - sphinxcontrib-serializinghtml==1.1.4
+  - torch==1.13.1
+  - torchaudio==0.13.1
+  - torchvision==0.14.1
+  - tornado==6.2
+  - traitlets==5.9.0
+  - typing-extensions==4.7.1
+  - urllib3==2.1.0
+  - wandb==0.16.1
+  - wcwidth==0.2.9
+  - wrapt==1.12.1
+  - zipp==3.15.0
+
