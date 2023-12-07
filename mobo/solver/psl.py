@@ -57,7 +57,11 @@ class PSLSolver(Solver):
     '''
     def __init__(self, *args, **kwargs):
         self.z = torch.zeros(kwargs["n_obj"]).to(device)
+        self.psmodel = None
         super().__init__(algo="",*args,**kwargs)
+        
+    def save_psmodel(self, path):
+        torch.save(self.psmodel.state_dict(), f'{path}/psmodel.pt')
 
     def solve(self, problem, X, Y):
         
@@ -73,15 +77,15 @@ class PSLSolver(Solver):
         Y_nds = Y[idx_nds[0]]
             
         # intitialize the model and optimizer 
-        psmodel = ParetoSetModel(surrogate_model.n_var, surrogate_model.n_obj)
-        psmodel.to(device)
+        self.psmodel = ParetoSetModel(surrogate_model.n_var, surrogate_model.n_obj)
+        self.psmodel.to(device)
             
         # optimizer
-        optimizer = torch.optim.Adam(psmodel.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.psmodel.parameters(), lr=1e-3)
           
         # t_step Pareto Set Learning with Gaussian Process
+        self.psmodel.train()
         for t_step in range(n_steps):
-            psmodel.train()
             
             # sample n_pref_update preferences
             alpha = np.ones(surrogate_model.n_obj)
@@ -89,7 +93,7 @@ class PSLSolver(Solver):
             pref_vec  = torch.tensor(pref).to(device).float() + 0.0001
             
             # get the current coressponding solutions
-            x = psmodel(pref_vec)
+            x = self.psmodel(pref_vec)
             x_np = x.detach().cpu().numpy()
             
             # obtain the value/grad of mean/std for each obj
@@ -112,11 +116,11 @@ class PSLSolver(Solver):
             
             # gradient-based pareto set model update 
             optimizer.zero_grad()
-            psmodel(pref_vec).backward(tch_grad)
+            self.psmodel(pref_vec).backward(tch_grad)
             optimizer.step()  
             
         # solutions selection on the learned Pareto set
-        psmodel.eval()
+        self.psmodel.eval()
         
         # sample n_candidate preferences
         alpha = np.ones(surrogate_model.n_obj)
@@ -124,7 +128,7 @@ class PSLSolver(Solver):
         pref  = torch.tensor(pref).to(device).float() + 0.0001
 
         # generate correponding solutions, get the predicted mean/std
-        X_candidate = psmodel(pref).to(torch.float64)
+        X_candidate = self.psmodel(pref).to(torch.float64)
         X_candidate_np = X_candidate.detach().cpu().numpy()
         Y_candidate_mean = surrogate_model.evaluate(X_candidate_np)['F']
         

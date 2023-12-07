@@ -384,11 +384,11 @@ def main():
 
         fig[kk].update_layout(
             sliders=sliders,
-            width=1300,
-            height=900,
             title=f"Performance Space of {problem_name} using {algo_names[kk]}",
             scene = scene_dict,
-            autosize = False
+            autosize = False,
+            width = 900,
+            height = 750,
         )
         
         # fig[kk].show()
@@ -407,7 +407,7 @@ def main():
                 niter += 1
 
             print('Number of families in ' + algo_names[kk] + ' through generations: ' + ','.join(nf_str))
-    plotly_grid_plotter(fig, f'./result/{args.problem}/{args.subfolder}/{args.problem}_performance_space.html', ncols=2 if n_algo > 1 else 1)
+    plotly_grid_plotter(fig, f'./result/{args.problem}/{args.subfolder}/{args.problem}_seed{args.seed}_performance_space.html', ncols=2 if n_algo > 1 else 1)
     
 
 if __name__ == '__main__':

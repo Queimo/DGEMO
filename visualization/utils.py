@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 
+from itertools import cycle
+
 
 def get_problem_dir(args):
     '''
@@ -57,3 +59,5 @@ defaultColors = [
     '#820028',
     '#d16c6a',
 ]
+
+defaultColorsCycle = cycle(defaultColors)

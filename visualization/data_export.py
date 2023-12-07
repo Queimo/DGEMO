@@ -157,6 +157,13 @@ class DataExport:
         self.export_data = self.export_data.append(df1, ignore_index=True)
         self.export_pareto = self.export_pareto.append(df2, ignore_index=True)
         self.export_approx_pareto = self.export_approx_pareto.append(df3, ignore_index=True)
+        
+    def save_psmodel(self):
+        '''
+        Save the Pareto set model.
+        '''
+        if not hasattr(self.optimizer.solver, 'save_psmodel'): return
+        self.optimizer.solver.save_psmodel(self.result_dir)
 
     def write_csvs(self):
         '''

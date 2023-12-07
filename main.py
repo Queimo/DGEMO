@@ -47,6 +47,8 @@ def main():
         # update & export current status to csv
         exporter.update(X_next, Y_next)
         exporter.write_csvs()
+        exporter.save_psmodel()
+        
 
     # close logger
     if logger is not None:

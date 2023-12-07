@@ -93,7 +93,7 @@ def get_solver_args(args=None):
 
     # general solver
     parser.add_argument('--solver', type=str, 
-        choices=['nsga2', 'moead', 'discovery'], default='nsga2', 
+        choices=['nsga2', 'moead', 'discovery', 'psl'], default='nsga2', 
         help='type of the multiobjective solver')
     parser.add_argument('--pop-size', type=int, default=100, 
         help='population size')
