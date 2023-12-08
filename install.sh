@@ -1,26 +1,29 @@
+
 #!/usr/local_rwth/bin/zsh
 
 ### Job name
-#SBATCH --job-name=mobo
-#### SBATCH --account=rwth1430
+#SBATCH --job-name=mobo_install
 
 
 ### File / path where STDOUT will be written, %J is the job id
-#SBATCH --output=training-out_mobo.%J
+#SBATCH --output=out_mobo_install.%J
 
 ### Request the time you need for execution. The full format is D-HH:MM:SS
 ### You must at least specify minutes or days and hours and may add or
 ### leave out any other parameters
-#SBATCH --time=08:00:00
+#SBATCH --time=02:00:00
 
 ### Request memory you need for your job in MB
 #SBATCH --mem-per-cpu=4000
 ### Request number of CPUs
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=3
 
 ### Change to the work directory
 cd $HPCWORK/DGEMO
 source $HOME/.zshrc
+micromamba env create -f ./environment.yml -Y
 micromamba activate mobo_replica
+pip install pygco
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+python ./main.py
 
-python ./main.py $@
