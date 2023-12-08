@@ -39,7 +39,7 @@ dependencies:
     - chardet==3.0.4
     - cma==2.7.0
     - cycler==0.10.0
-    - cython==0.29.16
+    - cython
     - docutils==0.16
     - future==0.18.2
     - idna==2.9
