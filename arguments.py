@@ -20,13 +20,13 @@ def get_general_args(args=None):
         help='number of design variables')
     parser.add_argument('--n-obj', type=int, default=2, 
         help='number of objectives')
-    parser.add_argument('--n-init-sample', type=int, default=5, 
+    parser.add_argument('--n-init-sample', type=int, default=12, 
         help='number of initial design samples')
-    parser.add_argument('--n-iter', type=int, default=10, 
+    parser.add_argument('--n-iter', type=int, default=15, 
         help='number of optimization iterations')
     parser.add_argument('--ref-point', type=float, nargs='+', default=None, 
         help='reference point for calculating hypervolume')
-    parser.add_argument('--batch-size', type=int, default=1, 
+    parser.add_argument('--batch-size', type=int, default=6, 
         help='size of the selected batch in one iteration')
 
     parser.add_argument('--seed', type=int, default=0, 

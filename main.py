@@ -18,7 +18,7 @@ def main():
     args, framework_args = get_args()
     
     merge_args = {**vars(args), **framework_args}   
-    run=wandb.init(project="mobo", config=merge_args)
+    run=wandb.init(project="mobo",config=merge_args, mode="offline")
     
     # set seed
     np.random.seed(args.seed)

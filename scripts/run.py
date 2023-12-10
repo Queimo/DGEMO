@@ -15,7 +15,7 @@ def main():
     parser.add_argument('--problem', type=str, nargs='+', required=True, help='problems to test')
     parser.add_argument('--algo', type=str, nargs='+', required=True, help='algorithms to test')
     parser.add_argument('--n-seed', type=int, default=8, help='number of different seeds')
-    parser.add_argument('--n-process', type=int, default=cpu_count(), help='number of parallel optimization executions')
+    parser.add_argument('--n-process', type=int, default=24, help='number of parallel optimization executions')
     parser.add_argument('--n-inner-process', type=int, default=1, help='number of process can be used for each optimization')
     parser.add_argument('--subfolder', type=str, default='default', help='subfolder of result')
     parser.add_argument('--exp-name', type=str, default=None, help='custom experiment name')
