@@ -1,4 +1,3 @@
-
 #!/usr/local_rwth/bin/zsh
 
 ### Job name
@@ -24,6 +23,6 @@ source $HOME/.zshrc
 micromamba env create -f ./environment.yml -Y
 micromamba activate mobo_replica
 pip install pygco
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 python ./main.py
 
