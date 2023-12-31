@@ -29,7 +29,7 @@ def main():
     parser.add_argument('--subfolder', type=str, default='default', help='subfolder of result')
     parser.add_argument('--exp-name', type=str, default=None, help='custom experiment name')
     parser.add_argument('--batch-size', type=int, default=1)
-    parser.add_argument('--n-iter', type=int, default=1)
+    parser.add_argument('--n-iter', type=int, default=20)
     parser.add_argument('--n-var', type=int, default=2)
     parser.add_argument('--n-obj', type=int, default=2)
 
