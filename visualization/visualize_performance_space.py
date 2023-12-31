@@ -59,6 +59,7 @@ def main():
     args = get_vis_args()
     problem_dir = get_problem_dir(args)
     algo_names = get_algo_names(args)
+    seed = args.seed
 
     n_algo = len(algo_names)
     has_family = args.family
@@ -67,7 +68,7 @@ def main():
     # read result csvs
     data_list, paretoEval_list, paretoGP_list = [], [], []
     for algo_name in algo_names:
-        csv_folder = f'{problem_dir}/{algo_name}/{args.seed}/'
+        csv_folder = f'{problem_dir}/{algo_name}/{seed}/'
         data_list.append(pd.read_csv(csv_folder + 'EvaluatedSamples.csv'))
         paretoEval_list.append(pd.read_csv(csv_folder + 'ParetoFrontEvaluated.csv'))
         if has_family:
@@ -407,8 +408,8 @@ def main():
                 niter += 1
 
             print('Number of families in ' + algo_names[kk] + ' through generations: ' + ','.join(nf_str))
-    plotly_grid_plotter(fig, f'./result/{args.problem}/{args.subfolder}/{args.problem}_seed{args.seed}_performance_space.html', ncols=2 if n_algo > 1 else 1)
-    
+    plotly_grid_plotter(fig, f'./result/{args.problem}/{args.subfolder}/{args.problem}_seed{seed}_performance_space.html', ncols=2 if n_algo > 1 else 1)
+    print(f'./result/{args.problem}/{args.subfolder}/{args.problem}_seed{seed}_performance_space.html')
 
 if __name__ == '__main__':
     main()

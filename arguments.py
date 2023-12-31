@@ -20,7 +20,7 @@ def get_general_args(args=None):
         help='number of design variables')
     parser.add_argument('--n-obj', type=int, default=2, 
         help='number of objectives')
-    parser.add_argument('--n-init-sample', type=int, default=12, 
+    parser.add_argument('--n-init-sample', type=int, default=5, 
         help='number of initial design samples')
     parser.add_argument('--n-iter', type=int, default=15, 
         help='number of optimization iterations')
@@ -144,6 +144,40 @@ def get_selection_args(args=None):
 
     args, _ = parser.parse_known_args(args)
     return args
+
+def extract_args(args):
+    
+    parser = ArgumentParser()
+    parser.add_argument('--args-path', type=str, default=None,
+        help='used for directly loading arguments from path of argument file')
+    args_p, _ = parser.parse_known_args(args)
+
+    
+    if args_p.args_path is None:
+
+        general_args = get_general_args(args)
+        surroagte_args = get_surroagte_args(args)
+        acquisition_args = get_acquisition_args(args)
+        solver_args = get_solver_args(args)
+        selection_args = get_selection_args(args)
+
+        framework_args = {
+            'surrogate': vars(surroagte_args),
+            'acquisition': vars(acquisition_args),
+            'solver': vars(solver_args),
+            'selection': vars(selection_args),
+        }
+
+    else:
+        
+        with open(args.args_path, 'r') as f:
+            all_args = yaml.load(f)
+        
+        general_args = Namespace(**all_args['general'])
+        framework_args = all_args.copy()
+        framework_args.pop('general')
+
+    return general_args, framework_args
 
 
 def get_args():

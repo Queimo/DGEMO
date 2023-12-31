@@ -74,10 +74,8 @@ def save_args(args):
         yaml.dump(args, f, default_flow_style=False, sort_keys=False)
 
 
-def main():
-    # get argument values
-    args = get_args()
-
+def run_experiment(args, framework_args=None):
+    
     # get reference point
     if args.ref_point is None:
         args.ref_point = get_ref_point(args.problem, args.n_var, args.n_obj, args.n_init_sample)
@@ -142,4 +140,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    args = get_args() 
+    
+    run_experiment(args)
