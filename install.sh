@@ -20,7 +20,7 @@
 ### Change to the work directory
 cd $HPCWORK/DGEMO
 source $HOME/.zshrc
-micromamba env create -f ./environment.yml -Y
+micromamba env create -f ./environment.yml -y
 micromamba activate mobo_replica
 pip install pygco
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
