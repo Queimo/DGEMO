@@ -7,7 +7,7 @@ class K1(Problem):
 
     def __init__(self):
         
-        self.sigma = 0.
+        self.sigma = 0.5
         self.repeat_eval = 2
         self.bounds = torch.tensor([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
@@ -28,7 +28,7 @@ class K1(Problem):
         train_obj = self.evaluate_repeat(x_torch)
         return -train_obj.mean(dim=-1).numpy()
     
-    def _calc_pareto_front(self, n_pareto_points=100):
+    def _calc_pareto_front(self, n_pareto_points=500):
         
         from .common import generate_initial_samples, get_problem
         from mobo.solver import NSGA2Solver
@@ -96,7 +96,7 @@ class K1(Problem):
         sigmas_pH = self.sigma * torch.exp(-20 * (x[:, 0] - 2.15) ** 2)
         sigmas_pH *= x[:, 1] * x[:, 1] * 4
 
-        sigmas_troughput = self.sigma / 200 * torch.ones_like(x[:, 1]) * 0.0
+        sigmas_troughput = self.sigma / 200 * torch.ones_like(x[:, 1])
 
         return torch.stack([sigmas_pH, sigmas_troughput]).T
 
