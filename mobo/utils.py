@@ -42,7 +42,6 @@ def find_pareto_front(Y, return_index=False):
     else:
         return pareto_front
 
-import pdb
 def calc_hypervolume(pfront, ref_point):
     '''
     Calculate hypervolume of pfront based on ref_point
