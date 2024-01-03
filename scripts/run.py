@@ -4,16 +4,19 @@ import os
 import signal
 from time import time
 from get_ref_point import get_ref_point
-from main_kwargs import run_experiment
+from main import run_experiment
 # from baselines.nsga2 import run_experiment as run_experiment_nsga2
 from arguments import extract_args
 import shlex
+from datetime import datetime
 
 @ray.remote
-def worker(cmd, problem, algo, seed):
+def worker(cmd, problem, algo, seed, datetime_str):
     cmd_args = shlex.split(cmd)
     cmd_args = cmd_args[2:]
     args, framework_args = extract_args(cmd_args)
+    
+    framework_args["datetime_str"] = datetime_str
 
     start_time = time()
     
@@ -53,6 +56,8 @@ def main():
 
     start_time = time()
     tasks = []
+    
+    datetime_str = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     for seed in range(args.n_seed):
         for problem in args.problem:
@@ -80,7 +85,7 @@ def main():
                 if args.exp_name is not None:
                     command += f' --exp-name {args.exp_name}'
 
-                task = worker.remote(command, problem, algo, seed)
+                task = worker.remote(command, problem, algo, seed, datetime_str)
                 tasks.append(task)
                 print(f'problem {problem} algo {algo} seed {seed} started')
 

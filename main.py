@@ -4,7 +4,6 @@ import numpy as np
 from problems.common import build_problem
 from mobo.algorithms import get_algorithm
 from visualization.data_export import DataExport
-from arguments import get_args
 from utils import save_args, setup_logger
 
 import wandb
@@ -13,12 +12,11 @@ import wandb
 Main entry for MOBO execution
 '''
 
-def main():
+def run_experiment(args, framework_args):
     # load arguments
-    args, framework_args = get_args()
     
     merge_args = {**vars(args), **framework_args}   
-    run=wandb.init(project="mobo",config=merge_args, mode="offline")
+    run=wandb.init(project="mobo",config=merge_args, mode="online")
     
     # set seed
     np.random.seed(args.seed)
@@ -67,12 +65,16 @@ def main():
     # data['export_approx_pareto'] = wandb.Table(dataframe=self.export_approx_pareto)
     # data['export_data'] = wandb.Table(dataframe=self.export_data)
     
-    run.summary['export_pareto'] = wandb.Table(dataframe=exporter.export_pareto)
-    run.summary['export_approx_pareto'] = wandb.Table(dataframe=exporter.export_approx_pareto)
-    run.summary['export_data'] = wandb.Table(dataframe=exporter.export_data)
+    # run.summary['export_pareto'] = wandb.Table(dataframe=exporter.export_pareto)
+    # run.summary['export_approx_pareto'] = wandb.Table(dataframe=exporter.export_approx_pareto)
+    # run.summary['export_data'] = wandb.Table(dataframe=exporter.export_data)
     
     run.finish()
 
 
 if __name__ == '__main__':
-    main()
+    
+    from arguments import get_args
+    args, framework_args = get_args() 
+    
+    run_experiment(args, framework_args)
