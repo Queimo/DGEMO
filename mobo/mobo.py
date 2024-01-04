@@ -78,6 +78,7 @@ class MOBO:
         # determine reference point from data if not specified by arguments
         if self.ref_point is None:
             self.ref_point = np.max(Y_init, axis=0)
+            self.solver.ref_point = self.ref_point
         self.selection.set_ref_point(self.ref_point)
 
         self._update_status(X_init, Y_init)

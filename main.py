@@ -6,7 +6,7 @@ from mobo.algorithms import get_algorithm
 from visualization.data_export import DataExport
 from utils import save_args, setup_logger
 
-import wandb
+# import wandb
 
 '''
 Main entry for MOBO execution
@@ -16,7 +16,7 @@ def run_experiment(args, framework_args):
     # load arguments
     
     merge_args = {**vars(args), **framework_args}   
-    run=wandb.init(project="mobo",config=merge_args, mode="online")
+    # run=wandb.init(project="mobo",config=merge_args, mode="online")
     
     # set seed
     np.random.seed(args.seed)
@@ -53,7 +53,7 @@ def run_experiment(args, framework_args):
         exporter.save_psmodel()
         
         # print(exporter.get_wandb_data())
-        run.log(exporter.get_wandb_data(args))
+        # run.log(exporter.get_wandb_data(args))
         
         # run subprocess for visualization
     
@@ -69,7 +69,7 @@ def run_experiment(args, framework_args):
     # run.summary['export_approx_pareto'] = wandb.Table(dataframe=exporter.export_approx_pareto)
     # run.summary['export_data'] = wandb.Table(dataframe=exporter.export_data)
     
-    run.finish()
+    # run.finish()
 
 
 if __name__ == '__main__':

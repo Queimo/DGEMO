@@ -7,12 +7,12 @@ class K1(Problem):
 
     def __init__(self):
         
-        self.sigma = 0.5
-        self.repeat_eval = 2
+        self.sigma = 0.
+        self.repeat_eval = 1
         self.bounds = torch.tensor([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 2
-        self.ref_point = torch.tensor([17, 0])
+        self.ref_point = torch.tensor([-17, 0])
         self.max_hv = 16
         
         super().__init__(
@@ -25,8 +25,9 @@ class K1(Problem):
     
     def _evaluate_F(self, x):
         x_torch = torch.from_numpy(x).float()
-        train_obj = self.evaluate_repeat(x_torch)
-        return -train_obj.mean(dim=-1).numpy()
+        train_obj = self.evaluate_repeat(x_torch).mean(dim=-1)
+        print(train_obj[0])
+        return train_obj.numpy() 
     
     def _calc_pareto_front(self, n_pareto_points=500):
         

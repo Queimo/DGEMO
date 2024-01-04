@@ -1,2 +1,3 @@
 from .gaussian_process import GaussianProcess
 from .thompson_sampling import ThompsonSampling
+from .botorch_gp_wrapper import BoTorchSurrogateModel

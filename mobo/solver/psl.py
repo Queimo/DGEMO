@@ -43,7 +43,7 @@ n_pref_update = 10
 # coefficient of LCB
 coef_lcb = 0.1
 # number of sampled candidates on the approxiamte Pareto front
-n_candidate = 1000 
+n_candidate = 128 
 # number of optional local search
 n_local = 1
 # device

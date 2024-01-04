@@ -24,6 +24,7 @@ class Solver:
         self.algo_type = algo
         self.algo_kwargs = kwargs
         self.solution = None
+        self.ref_point = None
 
     def solve(self, problem, X, Y):
         '''
