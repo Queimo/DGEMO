@@ -178,6 +178,7 @@ from botorch.utils.sampling import draw_sobol_samples
 
 rpr = torch.Tensor.__repr__
 
+torch.manual_seed(0)
 
 def _tensor_str(self):
     return "Tnsr{}".format(self.shape) + rpr(self)
@@ -193,7 +194,6 @@ class qNEHVIStupid(MOBO):
         "solver": "qnehvi",
         "selection": "hvi",
     }
-    config = {}
 
     def __init__(self, problem, n_iter, ref_point, framework_args):
         """
@@ -205,91 +205,9 @@ class qNEHVIStupid(MOBO):
         """
         super().__init__(problem, n_iter, ref_point, framework_args)
 
-    def _update_status(self, X, Y):
-        """
-        Update the status of algorithm from data
-        """
-        if self.sample_num == 0:
-            self.X = X
-            self.Y = Y
-        else:
-            self.X = np.vstack([self.X, X])
-            self.Y = np.vstack([self.Y, Y])
-        self.sample_num += len(X)
+    def solve(self, X_init_, Y_init_):
+        
 
-        self.status["pfront"], pfront_idx = find_pareto_front(self.Y, return_index=True)
-        self.status["pset"] = self.X[pfront_idx]
-        self.status["hv"] = calc_hypervolume(self.status["pfront"], self.ref_point)
-
-    def solve(self, X_init, Y_init):
-        X_init = torch.from_numpy(X_init).to(**tkwargs)
-        Y_init = torch.from_numpy(Y_init).to(**tkwargs).unsqueeze(-1)
-
-        standard_bounds = torch.zeros(2, self.real_problem.dim, **tkwargs)
-        standard_bounds[1] = 1
-
-        def generate_initial_data(n=5):
-            # generate training data
-            # train_x = draw_sobol_samples(self.real_problem.bounds, n, q=1).squeeze().to(**tkwargs)
-            # return train_x, *K1_wrapper(train_x)
-
-            return X_init, Y_init.mean(dim=-1), Y_init.mean(dim=-1)
-
-        def K1_wrapper(x):
-            train_obj_true = self.real_problem.f(x).to(**tkwargs)
-            train_obj = self.real_problem.evaluate_repeat(x).to(**tkwargs)
-            return train_obj.mean(dim=-1), train_obj_true
-
-        def initialize_model(train_x, train_obj):
-            # define models for objective and constraint
-            train_x = normalize(train_x, self.real_problem.bounds)
-            train_obj_mean = train_obj
-            # train_obj_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
-            train_obj_var = torch.zeros_like(train_obj).to(**tkwargs)
-            models = []
-            for i in range(train_obj.shape[1]):
-                train_y = train_obj_mean[..., i]
-                train_yvar = train_obj_var[..., i]
-                models.append(
-                    FixedNoiseGP(
-                        train_x,
-                        train_y.unsqueeze(-1),
-                        train_yvar.unsqueeze(-1),
-                        outcome_transform=Standardize(m=1),
-                    )
-                )
-            model = ModelListGP(*models)
-            mll = SumMarginalLogLikelihood(model.likelihood, model)
-            return mll, model
-
-        def optimize_qnehvi_and_get_observation(model, train_x, train_obj, sampler):
-            """Optimizes the qEHVI acquisition function, and returns a new candidate and observation."""
-            # partition non-dominated space into disjoint rectangles
-            acq_func = qNoisyExpectedHypervolumeImprovement(
-                model=model,
-                ref_point=self.real_problem.ref_point.tolist(),  # use known reference point
-                X_baseline=normalize(train_x, self.real_problem.bounds),
-                prune_baseline=True,  # prune baseline points that have estimated zero probability of being Pareto optimal
-                sampler=sampler,
-            )
-            # optimize
-            candidates, _ = optimize_acqf(
-                acq_function=acq_func,
-                bounds=standard_bounds,
-                q=BATCH_SIZE,
-                num_restarts=NUM_RESTARTS,
-                raw_samples=RAW_SAMPLES,  # used for intialization heuristic
-                options={"batch_limit": 5, "maxiter": 200},
-                sequential=True,
-            )
-            # observe new values
-            new_x = unnormalize(candidates.detach(), bounds=self.real_problem.bounds)
-            new_obj, new_obj_true = K1_wrapper(new_x)
-            return new_x, new_obj, new_obj_true
-
-        from botorch.acquisition.monte_carlo import qNoisyExpectedImprovement
-
-        # %%
 
         import time
         import warnings
@@ -310,81 +228,139 @@ class qNEHVIStupid(MOBO):
 
         verbose = True
 
-        hvs_qnehvi = []
 
-        # call helper functions to generate initial training data and initialize model
-        (
-            train_x_qparego,
-            train_obj_qparego,
-            train_obj_true_qparego,
-        ) = generate_initial_data(n=2 * (self.real_problem.dim + 1))
-        train_x_qnehvi, train_obj_qnehvi, train_obj_true_qnehvi = (
-            train_x_qparego,
-            train_obj_qparego,
-            train_obj_true_qparego,
-        )
-        mll_qnehvi, model_qnehvi = initialize_model(train_x_qnehvi, train_obj_qnehvi)
 
-        # compute hypervolume
-        bd = DominatedPartitioning(
-            ref_point=self.real_problem.ref_point, Y=train_obj_true_qparego
-        )
-        volume = bd.compute_hypervolume().item()
+        def initialize_model(train_x, train_y):
+            # define models for objective and constraint
+            train_y_mean = train_y
+            # train_y_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
+            train_y_var = torch.zeros_like(train_y).to(**tkwargs)
+            models = []
+            for i in range(train_y.shape[1]):
+                train_y_i = train_y_mean[..., i]
+                train_yvar_i = train_y_var[..., i]
+                models.append(
+                    FixedNoiseGP(
+                        train_x,
+                        train_y_i.unsqueeze(-1),
+                        train_yvar_i.unsqueeze(-1),
+                        outcome_transform=Standardize(m=1),
+                    )
+                )
+            model = ModelListGP(*models)
+            mll = SumMarginalLogLikelihood(model.likelihood, model)
+            return mll, model
 
-        hvs_qnehvi.append(volume)
+        def optimize_and_get_observation(model, train_x, train_y, sampler):
+            """Optimizes the qEHVI acquisition function, and returns a new candidate and observation."""
+            # partition non-dominated space into disjoint rectangles
+            acq_func = qNoisyExpectedHypervolumeImprovement(
+                model=model,
+                ref_point=self.solver.ref_point,  # use known reference point
+                X_baseline=torch.from_numpy(self.transformation.do(train_x.numpy())).to(**tkwargs),
+                prune_baseline=True,  # prune baseline points that have estimated zero probability of being Pareto optimal
+                sampler=sampler,
+            )
+            # optimize
+            new_x, new_aq = optimize_acqf(
+                acq_function=acq_func,
+                bounds=standard_bounds,
+                q=BATCH_SIZE,
+                num_restarts=NUM_RESTARTS,
+                raw_samples=RAW_SAMPLES,  # used for intialization heuristic
+                options={"batch_limit": 5, "maxiter": 200},
+                sequential=True,
+            )
+            return new_x, new_aq
+        X_init = X_init_
+        Y_init = Y_init_
+
+        """
+        Solve the real multi-objective problem from initial data (X_init, Y_init)
+        """
+        # determine reference point from data if not specified by arguments
+        self.ref_point = np.max(Y_init, axis=0)
+        print("ref_point", self.ref_point)
+        
+        # self.ref_point = self.real_problem.ref_point
+        self.solver.ref_point = np.min(Y_init, axis=0) # ref point is different for botorch
+        print("ref_point solver", self.solver.ref_point)
+        
+        self._update_status(X_init, Y_init)
+
+        global_timer = Timer()
+
+        X_init = torch.from_numpy(X_init).to(**tkwargs)
+        Y_init = torch.from_numpy(Y_init).to(**tkwargs)
+
+        standard_bounds = torch.zeros(2, self.real_problem.n_var, **tkwargs)
+        standard_bounds[1] = 1
+        hvs = []
+
+        train_X, train_Y, = X_init, Y_init
+        
+
 
         # run N_BATCH rounds of BayesOpt after the initial random batch
-        for iteration in range(1, N_BATCH + 1):
+        for iteration in range(N_BATCH):
             t0 = time.monotonic()
 
+            self.transformation.fit(self.X, self.Y)
+            train_x = torch.from_numpy(self.transformation.do(self.X)).to(**tkwargs)
+            train_y = torch.from_numpy(self.Y).to(**tkwargs)
+            
+            mll, model = initialize_model(train_x, train_y)
             # fit the models
-            fit_gpytorch_mll(mll_qnehvi)
+            fit_gpytorch_mll(mll)
 
             # define the qEI and qNEI acquisition modules using a QMC sampler
             qnehvi_sampler = SobolQMCNormalSampler(
                 sample_shape=torch.Size([MC_SAMPLES])
             )
 
-            (
-                new_x_qnehvi,
-                new_obj_qnehvi,
-                new_obj_true_qnehvi,
-            ) = optimize_qnehvi_and_get_observation(
-                model_qnehvi, train_x_qnehvi, train_obj_qnehvi, qnehvi_sampler
-            )
+            new_x, new_aq = optimize_and_get_observation(model, train_x, train_y, qnehvi_sampler)
+            
+            self.solver.solution = {'x': np.array(new_x), 'y': np.array(new_aq)}
+            
+            #"select"
+            new_X = torch.from_numpy(self.transformation.undo(new_x.numpy())).to(**tkwargs)
+            
+            
+            new_Y = torch.from_numpy(self.real_problem.evaluate(new_X)).to(**tkwargs)
 
-            train_x_qnehvi = torch.cat([train_x_qnehvi, new_x_qnehvi])
-            train_obj_qnehvi = torch.cat([train_obj_qnehvi, new_obj_qnehvi])
-            train_obj_true_qnehvi = torch.cat(
-                [train_obj_true_qnehvi, new_obj_true_qnehvi]
-            )
+            X_next = new_X.numpy()
+            Y_next = new_Y.numpy()
+            self._update_status(X_next, Y_next)
+            
+            train_X = torch.cat([train_X, new_X])
+            train_Y = torch.cat([train_Y, new_Y])
             # update progress
-            for hvs_list, train_obj in zip((hvs_qnehvi,), (train_obj_true_qnehvi,)):
+            for hvs_list_i, train_Y_i in zip((hvs,), (train_Y,)):
                 # compute hypervolume
                 bd = DominatedPartitioning(
-                    ref_point=self.real_problem.ref_point, Y=train_obj
+                    ref_point=torch.from_numpy(self.solver.ref_point).to(**tkwargs),
+                    Y=train_Y_i
                 )
                 volume = bd.compute_hypervolume().item()
-                hvs_list.append(volume)
+                hvs_list_i.append(volume)
 
             # reinitialize the models so they are ready for fitting on next iteration
             # Note: we find improved performance from not warm starting the model hyperparameters
             # using the hyperparameters from the previous iteration
-            mll_qnehvi, model_qnehvi = initialize_model(
-                train_x_qnehvi, train_obj_qnehvi
-            )
 
             t1 = time.monotonic()
 
             if verbose:
                 print(
                     f"\nBatch {iteration:>2}: Hypervolume (qNEHVI) = "
-                    f"( {hvs_qnehvi[-1]:>4.2f}), "
+                    f"( {hvs[-1]:>4.2f}), "
                     f"time = {t1-t0:>4.2f}.",
                     end="",
                 )
             else:
                 print(".", end="")
+
+            # yield new_X.numpy(), new_Y.numpy()
 
 
 def get_algorithm(name):

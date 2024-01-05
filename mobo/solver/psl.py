@@ -1,5 +1,5 @@
 import numpy as np
-from ..solver import Solver
+from .solver import Solver
 
 import numpy as np
 import torch

@@ -18,9 +18,9 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('--problem', type=str, required=True)
-    parser.add_argument('--n-var', type=int, default=6)
+    parser.add_argument('--n-var', type=int, default=2)
     parser.add_argument('--n-obj', type=int, default=2)
-    parser.add_argument('--n-init-sample', type=int, default=50)
+    parser.add_argument('--n-init-sample', type=int, default=500)
     args = parser.parse_args()
 
     ref_point = get_ref_point(args.problem, args.n_var, args.n_obj, args.n_init_sample)

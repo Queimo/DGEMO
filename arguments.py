@@ -57,7 +57,7 @@ def get_surroagte_args(args=None):
     parser = ArgumentParser()
 
     parser.add_argument('--surrogate', type=str, 
-        choices=['gp', 'ts'], default='gp', 
+        choices=['gp', 'ts', 'botorchgp'], default='gp', 
         help='type of the surrogate model')
     parser.add_argument('--n-spectral-pts', type=int, default=100, 
         help='number of points for spectral sampling')
@@ -93,7 +93,7 @@ def get_solver_args(args=None):
 
     # general solver
     parser.add_argument('--solver', type=str, 
-        choices=['nsga2', 'moead', 'discovery', 'psl'], default='nsga2', 
+        choices=['nsga2', 'moead', 'discovery', 'psl','qnehvi', 'qehvi'], default='nsga2', 
         help='type of the multiobjective solver')
     parser.add_argument('--pop-size', type=int, default=100, 
         help='population size')

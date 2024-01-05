@@ -28,41 +28,37 @@ class BoTorchSurrogateModel(SurrogateModel):
     '''
     def __init__(self, n_var, n_obj, **kwargs):
         self.bo_model = None
+        self.mll = None
         super().__init__(n_var, n_obj)
         
 
     def fit(self, X, Y):
-        mll, self.bo_model = self.initialize_model(X, Y)
-        fit_gpytorch_mll(mll)
+        X_torch = torch.from_numpy(X)
+        Y_torch = torch.from_numpy(Y)
+        self.mll, self.bo_model = self.initialize_model(X_torch, Y_torch)
+        fit_gpytorch_mll(self.mll)
         
-    def initialize_model(self, X, Y):
-        
-        # np to tensor
-        X = torch.from_numpy(X).to(**tkwargs)
-        Y = torch.from_numpy(Y).to(**tkwargs)
+    def initialize_model(self, train_x, train_y):
         # define models for objective and constraint
-        train_obj_mean = Y
-        # train_obj_var = problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
+        train_y_mean = train_y
+        # train_y_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
+        train_y_var = torch.zeros_like(train_y).to(**tkwargs)
         models = []
-        for i in range(Y.shape[1]):
-            train_y = train_obj_mean[..., i]
-            # train_yvar = train_obj_var[..., i]
-            train_yvar = torch.ones_like(train_y) * 1e-4 * 0.
+        for i in range(train_y.shape[1]):
+            train_y_i = train_y_mean[..., i]
+            train_yvar_i = train_y_var[..., i]
             models.append(
-                SingleTaskGP(
-                    X,
-                    train_y.unsqueeze(-1),
+                FixedNoiseGP(
+                    train_x,
+                    train_y_i.unsqueeze(-1),
+                    train_yvar_i.unsqueeze(-1),
+                    outcome_transform=Standardize(m=1),
                 )
-                # FixedNoiseGP(
-                #     X,
-                #     train_y.unsqueeze(-1),
-                #     train_yvar.unsqueeze(-1),
-                #     outcome_transform=Standardize(m=1),
-                # )
             )
         model = ModelListGP(*models)
         mll = SumMarginalLogLikelihood(model.likelihood, model)
         return mll, model
+
         
     def evaluate(self, X, std=False, calc_gradient=False, calc_hessian=False):
         

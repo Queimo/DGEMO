@@ -85,7 +85,9 @@ class qEHVISolver(Solver):
     def __init__(self, *args, **kwargs):
         
         super().__init__(algo="",*args,**kwargs)
-        
+    
+    def set_ref_point(self, ref_point):
+        self.ref_point = torch.tensor(ref_point).to(**tkwargs) 
 
     def solve(self, problem, X, Y):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)

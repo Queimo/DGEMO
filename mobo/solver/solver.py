@@ -26,6 +26,9 @@ class Solver:
         self.solution = None
         self.ref_point = None
 
+    def set_ref_point(self, ref_point):
+        self.ref_point = ref_point
+        
     def solve(self, problem, X, Y):
         '''
         Solve the multi-objective problem

@@ -12,7 +12,7 @@ class K1(Problem):
         self.bounds = torch.tensor([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 2
-        self.ref_point = torch.tensor([-17, 0])
+        self.ref_point = torch.tensor([18.0, 1.0])
         self.max_hv = 16
         
         super().__init__(
@@ -82,15 +82,16 @@ class K1(Problem):
     def f(self, x):
         pH = -(
             (7.0217 / (1 + torch.exp(-13.2429 * (x[:, 0] - 2.1502))) + 6.2086 - 9) ** 2
-        )
+        ) + 18.0
 
         troughput = (
             (x[:, 1] / self.bounds[1][1]) ** 0.5
             * 1
             / (1 + torch.exp(-13.2429 * (x[:, 0] - 2.1502)))
-        )
+        ) \
+            # * 0 + 1. #DANGER
 
-        return torch.stack([pH, troughput]).T
+        return torch.stack([pH, troughput]).T 
 
     def get_noise_var(self, x):
         # bell-shaped noise centered at 1.5

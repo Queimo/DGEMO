@@ -70,6 +70,8 @@ class MOBO:
         self.status['pfront'], pfront_idx = find_pareto_front(self.Y, return_index=True)
         self.status['pset'] = self.X[pfront_idx]
         self.status['hv'] = calc_hypervolume(self.status['pfront'], self.ref_point)
+        print('Current hypervolume: %.4f' % self.status['hv'])
+        
 
     def solve(self, X_init, Y_init):
         '''
@@ -78,13 +80,23 @@ class MOBO:
         # determine reference point from data if not specified by arguments
         if self.ref_point is None:
             self.ref_point = np.max(Y_init, axis=0)
-            self.solver.ref_point = self.ref_point
+            print("ref_point", self.ref_point)
+            self.solver.ref_point = np.min(Y_init, axis=0) # ref point is different for botorch
+            print("ref_point solver", self.solver.ref_point)
         self.selection.set_ref_point(self.ref_point)
+        self.solver.set_ref_point(self.ref_point)
 
         self._update_status(X_init, Y_init)
 
         global_timer = Timer()
-
+        
+        from botorch.utils.multi_objective.box_decompositions.dominated import (
+            DominatedPartitioning,
+        )
+        import torch
+        
+        hvs = []
+        
         for i in range(self.n_iter):
             print('========== Iteration %d ==========' % i)
 
@@ -121,6 +133,21 @@ class MOBO:
             global_timer.log('Total runtime', reset=False)
             print('Total evaluations: %d, hypervolume: %.4f\n' % (self.sample_num, self.status['hv']))
             
+            train_Y = torch.from_numpy(self.Y)
+            
+            for hvs_list_i, train_Y_i in zip((hvs,), (train_Y,)):
+                # compute hypervolume
+                bd = DominatedPartitioning(
+                    ref_point=torch.tensor(self.solver.ref_point),
+                    Y=train_Y_i
+                )
+                volume = bd.compute_hypervolume().item()
+                hvs_list_i.append(volume)
+                
+            print(
+                f"\nBatch {i:>2}: Hypervolume (qNEHVI) = "
+                f"( {hvs[-1]:>4.2f}), "
+            )
             # return new data iteration by iteration
             yield X_next, Y_next
 
