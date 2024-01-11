@@ -5,6 +5,8 @@ from mobo.utils import find_pareto_front, calc_hypervolume
 from utils import get_result_dir
 import wandb
 
+
+
 '''
 Export csv files for external visualization.
 '''
@@ -31,7 +33,7 @@ class DataExport:
         pfront, pidx = find_pareto_front(Y, return_index=True)
         pset = X[pidx]
         if args.ref_point is None:
-            args.ref_point = np.max(Y, axis=0)
+            args.ref_point = optimizer.ref_point_handler.get_ref_point()
         hv_value = calc_hypervolume(pfront, ref_point=args.ref_point)
         
         # init data frame
@@ -71,7 +73,7 @@ class DataExport:
 
         self.has_family = hasattr(self.optimizer.selection, 'has_family') and self.optimizer.selection.has_family
 
-    def update(self, X_next, Y_next):
+    def update(self, X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acquisition):
         '''
         For each algorithm iteration adds data for visualization.
         Input:
@@ -81,14 +83,17 @@ class DataExport:
         self.iter += 1
 
         # evaluate prediction of X_next on surrogate model
-        val = self.optimizer.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True)
-        Y_next_pred_mean = self.transformation.undo(y=val['F'])
-        Y_next_pred_std = val['S']
-        acquisition, _, _ = self.optimizer.acquisition.evaluate(val)
+        # val = self.optimizer.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True)
+        # Y_next_pred_mean = self.transformation.undo(y=val['F'])
+        # Y_next_pred_std = val['S']
+        # acquisition, _, _ = self.optimizer.acquisition.evaluate(val)
 
         pset = self.optimizer.status['pset']
         pfront = self.optimizer.status['pfront']
         hv_value = self.optimizer.status['hv']
+        # Y_next_pred_mean = self.optimizer.status['Y_next_pred_mean']
+        # Y_next_pred_std = self.optimizer.status['Y_next_pred_std']
+        # acquisition = self.optimizer.status['acquisition']
 
         d1 = {'iterID': np.full(self.batch_size, self.iter, dtype=int)} # export all data
         d2 = {'iterID': np.full(pfront.shape[0], self.iter, dtype=int)} # export pareto data

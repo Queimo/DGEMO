@@ -12,7 +12,7 @@ class K1(Problem):
         self.bounds = torch.tensor([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 2
-        self.ref_point = torch.tensor([18.0, 1.0])
+        self.ref_point = torch.tensor([69, 69])
         self.max_hv = 16
         
         super().__init__(
@@ -27,7 +27,7 @@ class K1(Problem):
         x_torch = torch.from_numpy(x).float()
         train_obj = self.evaluate_repeat(x_torch).mean(dim=-1)
         print(train_obj[0])
-        return train_obj.numpy() 
+        return -1 * train_obj.numpy() / np.array([18., 1.]) + np.array([0., 1.]) 
     
     def _calc_pareto_front(self, n_pareto_points=500):
         
@@ -82,7 +82,7 @@ class K1(Problem):
     def f(self, x):
         pH = -(
             (7.0217 / (1 + torch.exp(-13.2429 * (x[:, 0] - 2.1502))) + 6.2086 - 9) ** 2
-        ) + 18.0
+        )
 
         troughput = (
             (x[:, 1] / self.bounds[1][1]) ** 0.5

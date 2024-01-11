@@ -1,7 +1,12 @@
 from time import time
 import numpy as np
 from pymoo.factory import get_performance_indicator
-
+from botorch.utils.multi_objective.pareto import is_non_dominated
+from botorch.utils.multi_objective.hypervolume import Hypervolume
+from botorch.utils.multi_objective.box_decompositions.non_dominated import (
+    FastNondominatedPartitioning,
+)
+import torch
 
 class Timer:
     '''
@@ -15,7 +20,7 @@ class Timer:
 
         if string is not None:
             msg = string + ': ' + msg
-        print(msg)
+        # print(msg)
         
         if reset:
             self.t = time()
@@ -42,6 +47,24 @@ def find_pareto_front(Y, return_index=False):
     else:
         return pareto_front
 
+def find_pareto_front_old(Y, return_index=False):
+    '''
+    Find pareto front (undominated part) of the input performance data.
+    '''
+
+    Y = torch.from_numpy(Y)
+    
+    pareto_indices = is_non_dominated(Y)
+    
+    pareto_front = Y[pareto_indices]
+    
+    
+
+    if return_index:
+        return pareto_front.numpy(), pareto_indices.numpy()
+    else:
+        return pareto_front.numpy()
+
 def calc_hypervolume(pfront, ref_point):
     '''
     Calculate hypervolume of pfront based on ref_point
@@ -49,6 +72,17 @@ def calc_hypervolume(pfront, ref_point):
     hv = get_performance_indicator('hv', ref_point=ref_point)
     return hv.calc(pfront)
 
+def calc_hypervolume_old(pfront, ref_point):
+    '''
+    Calculate hypervolume of pfront based on ref_point
+    '''
+    
+    ref_point = torch.tensor(ref_point)
+    pfront = torch.from_numpy(pfront)
+    
+    bd = FastNondominatedPartitioning(ref_point=ref_point, Y=pfront)
+    volume = bd.compute_hypervolume().item()
+    return volume
 
 def safe_divide(x1, x2):
     '''

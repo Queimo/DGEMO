@@ -18,7 +18,7 @@ class DTLZ(Problem):
         super().__init__(n_var=n_var, n_obj=n_obj, n_constr=0, xl=0, xu=1, type_var=anp.double)
 
     def g1(self, X_M):
-        return 100 * (self.k + anp.sum(anp.square(X_M - 0.5) - anp.cos(20 * anp.pi * (X_M - 0.5)), axis=1))
+        return self.k + anp.sum(anp.square(X_M - 0.5) - anp.cos(20 * anp.pi * (X_M - 0.5)), axis=1)
 
     def g2(self, X_M):
         return anp.sum(anp.square(X_M - 0.5), axis=1)

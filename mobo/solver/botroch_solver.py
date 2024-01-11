@@ -1,4 +1,6 @@
-from . import Solver
+from . import NSGA2Solver, Solver
+from pymoo.algorithms.nsga2 import NSGA2
+
 
 import numpy as np
 import torch
@@ -34,13 +36,13 @@ RAW_SAMPLES = 512 if not SMOKE_TEST else 4
 MC_SAMPLES = 128 if not SMOKE_TEST else 16
 
 
-class qNEHVISolver(Solver):
+class qNEHVISolver(NSGA2Solver):
     '''
     Solver based on PSL
     '''
     def __init__(self, *args, **kwargs):
         
-        super().__init__(algo="",*args,**kwargs)
+        super().__init__(*args, **kwargs)
         
 
     def solve(self, problem, X, Y):
@@ -61,7 +63,11 @@ class qNEHVISolver(Solver):
             prune_baseline=True,  # prune baseline points that have estimated zero probability of being Pareto optimal
             sampler=sampler,
         )
-        # optimize
+        
+        
+        self.solution = super().solve(problem, X, Y)
+        
+        
         X_cand, Y_cand_pred = optimize_acqf(
             acq_function=acq_func,
             bounds=standard_bounds,
@@ -72,10 +78,9 @@ class qNEHVISolver(Solver):
             sequential=True,
         )
         
+        selection = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
         
-        # construct solution
-        self.solution = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
-        return self.solution
+        return selection
 
 
 class qEHVISolver(Solver):

@@ -45,7 +45,7 @@ class Selection(ABC):
         '''
         pass
 
-
+from .utils import calc_hypervolume
 class HVI(Selection):
     '''
     Hypervolume Improvement
@@ -58,18 +58,17 @@ class HVI(Selection):
         pred_pset, pred_pfront = transformation.undo(pred_pset, pred_pfront)
 
         curr_pfront = status['pfront'].copy()
-        hv = get_performance_indicator('hv', ref_point=self.ref_point)
         idx_choices = np.ma.array(np.arange(len(pred_pset)), mask=False) # mask array for index choices
         next_batch_indices = []
 
         # greedily select indices that maximize hypervolume contribution
         for _ in range(self.batch_size):
-            curr_hv = hv.calc(curr_pfront)
+            curr_hv = calc_hypervolume(curr_pfront, self.ref_point)
             max_hv_contrib = 0.
             max_hv_idx = -1
             for idx in idx_choices.compressed():
                 # calculate hypervolume contribution
-                new_hv = hv.calc(np.vstack([curr_pfront, pred_pfront[idx]]))
+                new_hv = calc_hypervolume(np.vstack([curr_pfront, pred_pfront[idx]]), self.ref_point)
                 hv_contrib = new_hv - curr_hv
                 if hv_contrib > max_hv_contrib:
                     max_hv_contrib = hv_contrib

@@ -3,7 +3,6 @@ import argparse
 import os
 import signal
 from time import time
-from get_ref_point import get_ref_point
 from main import run_experiment
 # from baselines.nsga2 import run_experiment as run_experiment_nsga2
 from arguments import extract_args
@@ -48,12 +47,6 @@ def main():
     args = parser.parse_args()
 
 
-    ref_dict = {}
-    for problem in args.problem:
-        ref_point = get_ref_point(problem, args.n_var, args.n_obj)
-        ref_point_str = ' '.join([f'" {str(val)}"' for val in ref_point])
-        ref_dict[problem] = ref_point_str
-
     start_time = time()
     tasks = []
     
@@ -67,14 +60,12 @@ def main():
                     command = f'python baselines/nsga2.py \
                         --problem {problem} --seed {seed} \
                         --batch-size {args.batch_size} --n-iter {args.n_iter} \
-                        --ref-point {ref_dict[problem]} \
                         --n-process {args.n_inner_process} \
                         --subfolder {args.subfolder} --log-to-file'
                 else:
                     command = f'python main.py \
                         --problem {problem} --algo {algo} --seed {seed} \
                         --batch-size {args.batch_size} --n-iter {args.n_iter} \
-                        --ref-point {ref_dict[problem]} \
                         --n-process {args.n_inner_process} \
                         --subfolder {args.subfolder} --log-to-file'
                     if algo != 'dgemo':

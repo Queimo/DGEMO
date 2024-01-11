@@ -40,7 +40,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         
     def initialize_model(self, train_x, train_y):
         # define models for objective and constraint
-        train_y_mean = train_y
+        train_y_mean = -train_y # negative because botorch assumes maximization
         # train_y_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
         train_y_var = torch.zeros_like(train_y).to(**tkwargs)
         models = []
@@ -52,7 +52,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                     train_x,
                     train_y_i.unsqueeze(-1),
                     train_yvar_i.unsqueeze(-1),
-                    outcome_transform=Standardize(m=1),
+                    # outcome_transform=Standardize(m=1),
                 )
             )
         model = ModelListGP(*models)
@@ -67,7 +67,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         F, dF, hF = [], [], [] # mean
         S, dS, hS = [], [], [] # std
         
-        F = self.bo_model.posterior(X).mean.squeeze(-1).detach().cpu().numpy()
+        F = -self.bo_model.posterior(X).mean.squeeze(-1).detach().cpu().numpy() # negative because botorch assumes maximization (undo previous negative)
         S = self.bo_model.posterior(X).variance.squeeze(-1).T.detach().cpu().numpy()
         
         dF = np.stack(dF, axis=1) if calc_gradient else None

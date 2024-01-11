@@ -36,6 +36,18 @@ class BoundedScaler(Scaler):
     def inverse_transform(self, X):
         return np.clip(X, 0, 1) * (self.bounds[1] - self.bounds[0]) + self.bounds[0]
 
+class Negative(Scaler):
+    '''
+    Scale data to [0, 1] according to bounds
+    '''
+    def __init__(self):
+        pass
+    
+    def transform(self, X):
+        return X * -1
+
+    def inverse_transform(self, X):
+        return X * -1
 
 ### 2-dim transformation
 
@@ -93,6 +105,7 @@ class StandardTransform(Transformation):
     def __init__(self, x_bound):
         super().__init__(
             BoundedScaler(x_bound),
+            # Negative()
             StandardScaler()
         )
 

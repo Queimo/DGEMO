@@ -5,6 +5,7 @@ from problems.common import build_problem
 from mobo.algorithms import get_algorithm
 from visualization.data_export import DataExport
 from utils import save_args, setup_logger
+from ref_point import RefPoint
 
 # import wandb
 
@@ -24,9 +25,13 @@ def run_experiment(args, framework_args):
     # build problem, get initial samples
     problem, true_pfront, X_init, Y_init = build_problem(args.problem, args.n_var, args.n_obj, args.n_init_sample, args.n_process)
     args.n_var, args.n_obj = problem.n_var, problem.n_obj
+    
+    ref_point_handler = RefPoint(args.problem, args.n_var, args.n_obj, n_init_sample=args.n_init_sample)
+    
+    args.ref_point = ref_point_handler.get_ref_point(is_botorch=False)
 
     # initialize optimizer
-    optimizer = get_algorithm(args.algo)(problem, args.n_iter, args.ref_point, framework_args)
+    optimizer = get_algorithm(args.algo)(problem, args.n_iter, ref_point_handler, framework_args)
 
     # save arguments & setup logger
     save_args(args, framework_args)
@@ -45,10 +50,9 @@ def run_experiment(args, framework_args):
 
     for _ in range(args.n_iter):
         # get new design samples and corresponding performance
-        X_next, Y_next = next(solution)
-        
+        X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acq = next(solution)
         # update & export current status to csv
-        exporter.update(X_next, Y_next)
+        exporter.update(X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acq)
         exporter.write_csvs()
         exporter.save_psmodel()
         
