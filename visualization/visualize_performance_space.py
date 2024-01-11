@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from arguments import get_vis_args
 from utils import get_problem_dir, get_algo_names, defaultColors
+import yaml
 
 def plotly_grid_plotter(figures=[], path="grid_plots.html", ncols=3):
 
@@ -66,11 +67,12 @@ def main():
     problem_name = os.path.basename(os.path.dirname(problem_dir))
 
     # read result csvs
-    data_list, paretoEval_list, paretoGP_list = [], [], []
+    data_list, paretoEval_list, paretoGP_list, yml_list = [], [], [], []
     for algo_name in algo_names:
         csv_folder = f'{problem_dir}/{algo_name}/{seed}/'
         data_list.append(pd.read_csv(csv_folder + 'EvaluatedSamples.csv'))
         paretoEval_list.append(pd.read_csv(csv_folder + 'ParetoFrontEvaluated.csv'))
+        yml_list.append(yaml.load(open(csv_folder + 'args.yml'), Loader=yaml.SafeLoader))
         if has_family:
             paretoGP_list.append(pd.read_csv(csv_folder + 'ParetoFrontApproximation.csv'))
 
@@ -164,6 +166,25 @@ def main():
             )
             if n_obj > 2: trace_dict['z'] = data_trimmed['f3']
             fig[kk].add_trace(scatter(**trace_dict))
+            
+            if yml_list[kk]['general']['ref_point'] is not None:       
+                #add reference point
+                trace_dict = dict(
+                    name = 'Reference Point',
+                    visible=False,
+                    mode='markers', 
+                    x=[yml_list[kk]['general']['ref_point'][0]], 
+                    y=[yml_list[kk]['general']['ref_point'][1]], 
+                    hovertext=['Reference Point'],
+                    hoverinfo="text",
+                    marker=dict(
+                        color='rgba(0, 0, 0, 1)',
+                        size=10,
+                        symbol='x'
+                    )
+                )
+                if n_obj > 2: trace_dict['z'] = [yml_list[kk]['general']['ref_point'][2]]
+                fig[kk].add_trace(scatter(**trace_dict))
             
             # First set of sample points
             trace_dict = dict(

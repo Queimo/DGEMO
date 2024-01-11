@@ -107,7 +107,7 @@ def main():
     if args.savefig:
         fig.write_image(f'./result/{args.problem}/{args.subfolder}/{args.problem}_hv.png')
     else:
-        fig.show()
+        # fig.show()
         fig.write_html(f'./result/{args.problem}/{args.subfolder}/{args.problem}_hv.html')
 
 
