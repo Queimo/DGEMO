@@ -29,7 +29,7 @@ class Solver:
     def set_ref_point(self, ref_point):
         self.ref_point = ref_point
         
-    def solve(self, problem, X, Y):
+    def solve(self, problem, X, Y, *args, **kwargs):
         '''
         Solve the multi-objective problem
         '''

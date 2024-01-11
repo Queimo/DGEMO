@@ -73,3 +73,10 @@ dependencies:
     - sphinxcontrib-serializinghtml==1.1.4
     - wandb
     - ray
+    - torch
+    - torchvision
+    - torchaudio
+    - --extra-index-url https://download.pytorch.org/whl/cu118
+    - botorch
+    - pygco
+    - pyyaml

@@ -22,7 +22,7 @@ def get_general_args(args=None):
         help='number of objectives')
     parser.add_argument('--n-init-sample', type=int, default=5, 
         help='number of initial design samples')
-    parser.add_argument('--n-iter', type=int, default=20, 
+    parser.add_argument('--n-iter', type=int, default=8, 
         help='number of optimization iterations')
     parser.add_argument('--ref-point', type=float, nargs='+', default=None, 
         help='reference point for calculating hypervolume')

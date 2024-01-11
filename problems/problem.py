@@ -6,19 +6,15 @@ from multiprocessing.pool import ThreadPool
 from pymoo.model.problem import Problem as PymooProblem
 from pymoo.model.problem import at_least2d, evaluate_in_parallel
 
-'''
+"""
 Problem definition built upon Pymoo's Problem class, added some custom features
-'''
+"""
+
 
 class Problem(PymooProblem):
-    
-    def evaluate(self,
-                 X,
-                 *args,
-                 return_values_of="auto",
-                 return_as_dictionary=False,
-                 **kwargs):
-
+    def evaluate(
+        self, X, *args, return_values_of="auto", return_as_dictionary=False, **kwargs
+    ):
         """
         Evaluate the given problem.
 
@@ -62,7 +58,10 @@ class Problem(PymooProblem):
 
         # check the dimensionality of the problem and the given input
         if X.shape[1] != self.n_var:
-            raise Exception('Input dimension %s are not equal to n_var %s!' % (X.shape[1], self.n_var))
+            raise Exception(
+                "Input dimension %s are not equal to n_var %s!"
+                % (X.shape[1], self.n_var)
+            )
 
         # automatic return the function values and CV if it has constraints if not defined otherwise
         if type(return_values_of) == str and return_values_of == "auto":
@@ -71,13 +70,15 @@ class Problem(PymooProblem):
                 return_values_of.append("CV")
 
         # all values that are set in the evaluation function
-        values_not_set = [val for val in return_values_of if val not in self.evaluation_of]
+        values_not_set = [
+            val for val in return_values_of if val not in self.evaluation_of
+        ]
 
         # have a look if gradients are not set and try to use autograd and calculate grading if implemented using it
         gradients_not_set = [val for val in values_not_set if val.startswith("d")]
 
         # whether gradient calculation is necessary or not
-        calc_gradient = (len(gradients_not_set) > 0)
+        calc_gradient = len(gradients_not_set) > 0
 
         # set in the dictionary if the output should be calculated - can be used for the gradient
         out = {}
@@ -87,14 +88,31 @@ class Problem(PymooProblem):
         # calculate the output array - either elementwise or not. also consider the gradient
         # NOTE: pass return_values_of to evaluation function to avoid unnecessary computation
         if self.elementwise_evaluation:
-            out = self._evaluate_elementwise(X, calc_gradient, out, *args, return_values_of=return_values_of, **kwargs)
+            out = self._evaluate_elementwise(
+                X,
+                calc_gradient,
+                out,
+                *args,
+                return_values_of=return_values_of,
+                **kwargs
+            )
         else:
-            out = self._evaluate_batch(X, calc_gradient, out, *args, return_values_of=return_values_of, **kwargs)
+            out = self._evaluate_batch(
+                X,
+                calc_gradient,
+                out,
+                *args,
+                return_values_of=return_values_of,
+                **kwargs
+            )
 
-            calc_gradient_of = [key for key, val in out.items()
-                                if "d" + key in return_values_of and
-                                out.get("d" + key) is None and
-                                (type(val) == autograd.numpy.numpy_boxes.ArrayBox)]
+            calc_gradient_of = [
+                key
+                for key, val in out.items()
+                if "d" + key in return_values_of
+                and out.get("d" + key) is None
+                and (type(val) == autograd.numpy.numpy_boxes.ArrayBox)
+            ]
 
             if len(calc_gradient_of) > 0:
                 deriv = self._calc_gradient(out, calc_gradient_of)
@@ -116,7 +134,7 @@ class Problem(PymooProblem):
 
         # if an additional boolean flag for feasibility should be returned
         if "feasible" in return_values_of:
-            out["feasible"] = (CV <= 0)
+            out["feasible"] = CV <= 0
 
         # if asked for a value but not set in the evaluation set to None
         for val in return_values_of:
@@ -132,7 +150,6 @@ class Problem(PymooProblem):
         if return_as_dictionary:
             return out
         else:
-
             # if just a single value do not return a tuple
             if len(return_values_of) == 1:
                 return out[return_values_of[0]]
@@ -148,7 +165,11 @@ class Problem(PymooProblem):
     def _evaluate(self, x, out, *args, return_values_of=None, **kwargs):
         if "F" in return_values_of:
             out["F"] = self._evaluate_F(x)
-        if "G" in return_values_of or "feasible" in return_values_of or "CV" in return_values_of:
+        if (
+            "G" in return_values_of
+            or "feasible" in return_values_of
+            or "CV" in return_values_of
+        ):
             out["G"] = self._evaluate_G(x)
 
     def _evaluate_batch(self, X, calc_gradient, out, *args, **kwargs):
@@ -160,10 +181,12 @@ class Problem(PymooProblem):
     def _evaluate_elementwise(self, X, calc_gradient, out, *args, **kwargs):
         # NOTE: to use self-calculated dF (gradient) rather than autograd.numpy, which is not supported by Pymoo
         ret = []
+
         def func(_x):
             _out = {}
             self._evaluate(_x, _out, *args, calc_gradient=calc_gradient, **kwargs)
             return _out
+
         parallelization = self.parallelization
         if not isinstance(parallelization, (list, tuple)):
             parallelization = [self.parallelization]
@@ -185,8 +208,10 @@ class Problem(PymooProblem):
                 ret = np.array(pool.starmap(evaluate_in_parallel, params))
         elif _type == "dask":
             if len(_params) != 2:
-                raise Exception("A distributed client objective is need for using dask. parallelization=(dask, "
-                                "<client>, <function>).")
+                raise Exception(
+                    "A distributed client objective is need for using dask. parallelization=(dask, "
+                    "<client>, <function>)."
+                )
             else:
                 client, fun = _params
             jobs = []
@@ -194,11 +219,31 @@ class Problem(PymooProblem):
                 jobs.append(client.submit(fun, X[k]))
             ret = [job.result() for job in jobs]
         else:
-            raise Exception("Unknown parallelization method: %s (None, threads, dask)" % self.parallelization)
+            raise Exception(
+                "Unknown parallelization method: %s (None, threads, dask)"
+                % self.parallelization
+            )
         # stack all the single outputs together
         for key in ret[0].keys():
             out[key] = row_stack([ret[i][key] for i in range(len(ret))])
         return out
 
     def __str__(self):
-        return '========== Problem Definition ==========\n' + super().__str__()
+        return "========== Problem Definition ==========\n" + super().__str__()
+
+
+class RiskyProblem(Problem):
+    def _evaluate_rho(self, x):
+        return None
+
+    def _evaluate(self, x, out, *args, return_values_of=None, **kwargs):
+        if "F" in return_values_of:
+            out["F"] = self._evaluate_F(x)
+        if (
+            "G" in return_values_of
+            or "feasible" in return_values_of
+            or "CV" in return_values_of
+        ):
+            out["G"] = self._evaluate_G(x)
+        if "rho" in return_values_of:
+            out["rho"] = self._evaluate_rho(x)

@@ -23,7 +23,7 @@ def run_experiment(args, framework_args):
     np.random.seed(args.seed)
 
     # build problem, get initial samples
-    problem, true_pfront, X_init, Y_init = build_problem(args.problem, args.n_var, args.n_obj, args.n_init_sample, args.n_process)
+    problem, true_pfront, X_init, Y_init, rho_init = build_problem(args.problem, args.n_var, args.n_obj, args.n_init_sample, args.n_process)
     args.n_var, args.n_obj = problem.n_var, problem.n_obj
     
     ref_point_handler = RefPoint(args.problem, args.n_var, args.n_obj, n_init_sample=args.n_init_sample)
@@ -39,10 +39,10 @@ def run_experiment(args, framework_args):
     print(problem, optimizer, sep='\n')
     
     # initialize data exporter
-    exporter = DataExport(optimizer, X_init, Y_init, args)
+    exporter = DataExport(optimizer, X_init, Y_init, rho_init, args)
 
     # optimization
-    solution = optimizer.solve(X_init, Y_init)
+    solution = optimizer.solve(X_init, Y_init, rho_init)
 
     # export true Pareto front to csv
     if true_pfront is not None:
@@ -50,7 +50,7 @@ def run_experiment(args, framework_args):
 
     for _ in range(args.n_iter):
         # get new design samples and corresponding performance
-        X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acq = next(solution)
+        X_next, Y_next, rho_next, Y_next_pred_mean, Y_next_pred_std, acq = next(solution)
         # update & export current status to csv
         exporter.update(X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acq)
         exporter.write_csvs()

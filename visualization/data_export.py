@@ -13,7 +13,7 @@ Export csv files for external visualization.
 
 class DataExport:
 
-    def __init__(self, optimizer, X, Y, args):
+    def __init__(self, optimizer, X, Y, rho, args):
         '''
         Initialize data exporter from initial data (X, Y).
         '''

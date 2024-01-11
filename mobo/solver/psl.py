@@ -45,7 +45,7 @@ coef_lcb = 0.1
 # number of sampled candidates on the approxiamte Pareto front
 n_candidate = 128 
 # number of optional local search
-n_local = 1
+n_local = 0
 # device
 device = 'cpu'
 
@@ -63,7 +63,7 @@ class PSLSolver(Solver):
     def save_psmodel(self, path):
         torch.save(self.psmodel.state_dict(), f'{path}/psmodel.pt')
 
-    def solve(self, problem, X, Y):
+    def solve(self, problem, X, Y, rho=None):
         
         surrogate_model = problem.surrogate_model
         
@@ -136,38 +136,38 @@ class PSLSolver(Solver):
         Y_candidate = Y_candidate_mean - coef_lcb * Y_candidata_std
         
         # optional TCH-based local Exploitation 
-        if n_local > 0:
-            X_candidate_tch = X_candidate_np
-            z_candidate = self.z.cpu().numpy()
-            pref_np = pref.cpu().numpy()
-            for _ in range(n_local):
-                candidate_mean =  surrogate_model.evaluate(X_candidate_tch)['F']
-                candidate_mean_grad =  surrogate_model.evaluate(X_candidate_tch, calc_gradient=True)['dF']
+        # if n_local > 0:
+        #     X_candidate_tch = X_candidate_np
+        #     z_candidate = self.z.cpu().numpy()
+        #     pref_np = pref.cpu().numpy()
+        #     for _ in range(n_local):
+        #         candidate_mean =  surrogate_model.evaluate(X_candidate_tch)['F']
+        #         candidate_mean_grad =  surrogate_model.evaluate(X_candidate_tch, calc_gradient=True)['dF']
                 
-                candidate_std = surrogate_model.evaluate(X_candidate_tch, std=True)['S']
-                candidate_std_grad = surrogate_model.evaluate(X_candidate_tch, std=True, calc_gradient=True)['dS']
+        #         candidate_std = surrogate_model.evaluate(X_candidate_tch, std=True)['S']
+        #         candidate_std_grad = surrogate_model.evaluate(X_candidate_tch, std=True, calc_gradient=True)['dS']
                 
-                candidate_value = candidate_mean - coef_lcb * candidate_std
-                candidate_grad = candidate_mean_grad - coef_lcb * candidate_std_grad
+        #         candidate_value = candidate_mean - coef_lcb * candidate_std
+        #         candidate_grad = candidate_mean_grad - coef_lcb * candidate_std_grad
                 
-                candidate_tch_idx = np.argmax((1 / pref_np) * (candidate_value - z_candidate), axis = 1)
-                candidate_tch_idx_mat = [np.arange(len(candidate_tch_idx)),list(candidate_tch_idx)]
+        #         candidate_tch_idx = np.argmax((1 / pref_np) * (candidate_value - z_candidate), axis = 1)
+        #         candidate_tch_idx_mat = [np.arange(len(candidate_tch_idx)),list(candidate_tch_idx)]
                 
-                candidate_tch_grad = (1 / pref_np)[np.arange(len(candidate_tch_idx)),list(candidate_tch_idx)].reshape(n_candidate,1) * candidate_grad[np.arange(len(candidate_tch_idx)),list(candidate_tch_idx)] 
-                candidate_tch_grad +=  0.01 * np.sum(candidate_grad, axis = 1) 
+        #         candidate_tch_grad = (1 / pref_np)[np.arange(len(candidate_tch_idx)),list(candidate_tch_idx)].reshape(n_candidate,1) * candidate_grad[np.arange(len(candidate_tch_idx)),list(candidate_tch_idx)] 
+        #         candidate_tch_grad +=  0.01 * np.sum(candidate_grad, axis = 1) 
                 
-                X_candidate_tch = X_candidate_tch - 0.01 * candidate_tch_grad
-                X_candidate_tch[X_candidate_tch <= 0]  = 0
-                X_candidate_tch[X_candidate_tch >= 1]  = 1  
+        #         X_candidate_tch = X_candidate_tch - 0.01 * candidate_tch_grad
+        #         X_candidate_tch[X_candidate_tch <= 0]  = 0
+        #         X_candidate_tch[X_candidate_tch >= 1]  = 1  
                 
-            X_candidate_np = np.vstack([X_candidate_np, X_candidate_tch])
+        #     X_candidate_np = np.vstack([X_candidate_np, X_candidate_tch])
             
-            Y_candidate_mean = surrogate_model.evaluate(X_candidate_np)['F']
-            Y_candidata_std = surrogate_model.evaluate(X_candidate_np, std=True)['S']
+        #     Y_candidate_mean = surrogate_model.evaluate(X_candidate_np)['F']
+        #     Y_candidata_std = surrogate_model.evaluate(X_candidate_np, std=True)['S']
             
-            Y_candidate = Y_candidate_mean - coef_lcb * Y_candidata_std
+        #     Y_candidate = Y_candidate_mean - coef_lcb * Y_candidata_std
         
         
         # construct solution
-        self.solution = {'x': np.array(X_candidate_np), 'y': np.array(Y_candidate_mean)}
+        self.solution = {'x': np.array(X_candidate_np), 'y': np.array(Y_candidate)}
         return self.solution

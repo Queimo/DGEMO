@@ -47,19 +47,22 @@ def generate_initial_samples(problem, n_sample):
     '''
     X_feasible = np.zeros((0, problem.n_var))
     Y_feasible = np.zeros((0, problem.n_obj))
+    rho_feasible = np.zeros((0, problem.n_obj))
 
     # NOTE: when it's really hard to get feasible samples, the program hangs here
     while len(X_feasible) < n_sample:
         X = lhs(problem.n_var, n_sample)
         X = problem.xl + X * (problem.xu - problem.xl)
-        Y, feasible = problem.evaluate(X, return_values_of=['F', 'feasible'])
+        Y, feasible, rho = problem.evaluate(X, return_values_of=['F', 'feasible', 'rho'])
         feasible = feasible.flatten()
         X_feasible = np.vstack([X_feasible, X[feasible]])
         Y_feasible = np.vstack([Y_feasible, Y[feasible]])
+        rho_feasible = np.vstack([rho_feasible, rho[feasible]]) 
+        
     
     indices = np.random.permutation(np.arange(len(X_feasible)))[:n_sample]
-    X, Y = X_feasible[indices], Y_feasible[indices]
-    return X, Y
+    X, Y, rho = X_feasible[indices], Y_feasible[indices], rho_feasible[indices]
+    return X, Y, rho
 
 
 def build_problem(name, n_var, n_obj, n_init_sample, n_process=1):
@@ -103,6 +106,6 @@ def build_problem(name, n_var, n_obj, n_init_sample, n_process=1):
             pareto_front = None
 
     # get initial samples
-    X_init, Y_init = generate_initial_samples(problem, n_init_sample)
+    X_init, Y_init, rho_init = generate_initial_samples(problem, n_init_sample)
     
-    return problem, pareto_front, X_init, Y_init
+    return problem, pareto_front, X_init, Y_init, rho_init

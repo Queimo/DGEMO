@@ -1,18 +1,17 @@
 import numpy as np
-from .problem import Problem
+from .problem import Problem, RiskyProblem
 import torch
 from torch import Tensor
 
-class K1(Problem):
+class K1(RiskyProblem):
 
     def __init__(self):
         
-        self.sigma = 0.
-        self.repeat_eval = 1
+        self.sigma = 0.5
+        self.repeat_eval = 3
         self.bounds = torch.tensor([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 2
-        self.ref_point = torch.tensor([69, 69])
         self.max_hv = 16
         
         super().__init__(
@@ -26,8 +25,13 @@ class K1(Problem):
     def _evaluate_F(self, x):
         x_torch = torch.from_numpy(x).float()
         train_obj = self.evaluate_repeat(x_torch).mean(dim=-1)
-        print(train_obj[0])
-        return -1 * train_obj.numpy() / np.array([18., 1.]) + np.array([0., 1.]) 
+        return -1 * train_obj.numpy() / np.array([18., 1.]) + np.array([0., 1.])
+    
+    def _evaluate_rho(self, x):
+        x_torch = torch.from_numpy(x).float()
+        train_rho = self.evaluate_repeat(x_torch).std(dim=-1)
+        return train_rho.numpy() / np.array([18., 1.]) + 1.000E-03
+    
     
     def _calc_pareto_front(self, n_pareto_points=500):
         
@@ -36,7 +40,7 @@ class K1(Problem):
         from arguments import get_solver_args
          
         prob = get_problem('k1')
-        X_init, Y_init = generate_initial_samples(prob, n_pareto_points)
+        X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
         
         #namespace to dict
         solver_args = vars(get_solver_args())

@@ -73,16 +73,18 @@ class MOBO:
         self.info = None
         self.global_timer = None
 
-    def _update_status(self, X, Y):
+    def _update_status(self, X, Y, rho=None):
         '''
         Update the status of algorithm from data
         '''
         if self.sample_num == 0:
             self.X = X
             self.Y = Y
+            self.rho = rho
         else:
             self.X = np.vstack([self.X, X])
             self.Y = np.vstack([self.Y, Y])
+            self.rho = np.vstack([self.rho, rho]) if rho is not None else None
         self.sample_num += len(X)
 
         self.status['pfront'], pfront_idx = find_pareto_front(self.Y, return_index=True)
@@ -97,9 +99,10 @@ class MOBO:
         # data normalization
         self.transformation.fit(self.X, self.Y)
         X, Y = self.transformation.do(self.X, self.Y)
+        rho = self.rho
 
         # build surrogate models
-        self.surrogate_model.fit(X, Y)
+        self.surrogate_model.fit(X, Y, rho)
         timer.log("Surrogate model fitted")
 
         # define acquisition functions
@@ -112,7 +115,7 @@ class MOBO:
             self.acquisition,
             self.transformation,
         )
-        solution = self.solver.solve(surr_problem, X, Y)
+        solution = self.solver.solve(surr_problem, X, Y, rho)
         timer.log("Surrogate problem solved")
 
         # batch point selection
@@ -123,8 +126,7 @@ class MOBO:
         timer.log("Next sample batch selected")
 
         # update dataset
-        Y_next = self.real_problem.evaluate(X_next)
-        
+        Y_next, rho_next = self.real_problem.evaluate(X_next, return_values_of=['F', 'rho'])
         # evaluate prediction of X_next on surrogate model
         val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True)
         Y_next_pred_mean = self.transformation.undo(y=val['F'])
@@ -134,7 +136,8 @@ class MOBO:
         
         if self.real_problem.n_constr > 0:
             Y_next = Y_next[0]
-        self._update_status(X_next, Y_next)
+            rho_next = rho_next[0]
+        self._update_status(X_next, Y_next, rho=rho_next)
         timer.log("New samples evaluated")
 
         # statistics
@@ -145,30 +148,30 @@ class MOBO:
         )
 
         # return new data iteration by iteration
-        return X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acquisition
+        return X_next, Y_next, rho_next, Y_next_pred_mean, Y_next_pred_std, acquisition
 
-    def init_solve(self, X_init, Y_init):
+    def init_solve(self, X_init, Y_init, rho_init=None):
         self.selection.set_ref_point(self.ref_point_handler.get_ref_point(is_botorch=False))
         self.solver.set_ref_point(self.ref_point_handler.get_ref_point(is_botorch=True)) # botorch need a different ref point because it assumes maximization and boxdecomposition fails otherwise
 
-        self._update_status(X_init, Y_init)
+        self._update_status(X_init, Y_init, rho_init)
 
         self.global_timer = Timer()
         
 
-    def solve(self, X_init, Y_init):
+    def solve(self, X_init, Y_init, rho_init=None):
         """
         Solve the real multi-objective problem from initial data (X_init, Y_init)
         """
-        self.init_solve(X_init, Y_init)
+        self.init_solve(X_init, Y_init, rho_init)
         
         for i in range(self.n_iter):
             print("========== Iteration %d ==========" % i)
             
             
-            X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acquisition = self.step()
+            X_next, Y_next, rho_next, Y_next_pred_mean, Y_next_pred_std, acquisition = self.step()
             
-            yield X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acquisition
+            yield X_next, Y_next, rho_next, Y_next_pred_mean, Y_next_pred_std, acquisition
 
     def __str__(self):
         return (

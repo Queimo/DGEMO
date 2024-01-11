@@ -51,11 +51,11 @@ class GaussianProcess(SurrogateModel):
             gp = GaussianProcessRegressor(kernel=kernel, optimizer=constrained_optimization)
             self.gps.append(gp)
 
-    def fit(self, X, Y):
+    def fit(self, X, Y, rho=None):
         for i, gp in enumerate(self.gps):
             gp.fit(X, Y[:, i])
         
-    def evaluate(self, X, std=False, calc_gradient=False, calc_hessian=False):
+    def evaluate(self, X, rho=None, std=False, calc_gradient=False, calc_hessian=False):
         F, dF, hF = [], [], [] # mean
         S, dS, hS = [], [], [] # std
 

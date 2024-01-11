@@ -17,7 +17,7 @@ class RefPoint:
     def __init__(self, problem, n_var=6, n_obj=2, n_init_sample=100, seed=0, is_botorch=False):
         
         np.random.seed(seed)
-        _, _, _, Y_init = build_problem(problem, n_var, n_obj, n_init_sample)
+        _, _, _, Y_init, rho_init = build_problem(problem, n_var, n_obj, n_init_sample)
     
         # self.ref_point_botroch = infer_reference_point(torch.tensor(-Y_init)).numpy().tolist()
         self.ref_point_botroch = np.max(-Y_init, axis=0).tolist()

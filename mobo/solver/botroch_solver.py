@@ -45,7 +45,7 @@ class qNEHVISolver(NSGA2Solver):
         super().__init__(*args, **kwargs)
         
 
-    def solve(self, problem, X, Y):
+    def solve(self, problem, X, Y, rho):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         surrogate_model = problem.surrogate_model
@@ -94,42 +94,43 @@ class qEHVISolver(Solver):
     def set_ref_point(self, ref_point):
         self.ref_point = torch.tensor(ref_point).to(**tkwargs) 
 
-    def solve(self, problem, X, Y):
-        standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
-        standard_bounds[1] = 1
-        surrogate_model = problem.surrogate_model
+#     def solve(self, problem, X, Y, rho):
+#         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
+#         standard_bounds[1] = 1
+#         surrogate_model = problem.surrogate_model
         
-        ref_point = torch.from_numpy(np.max(Y, axis=0)).to(**tkwargs)
-        print("ref_point", ref_point)
-        # ref_point =  torch.min(torch.cat((self.z.reshape(1,surrogate_model.n_obj),torch.from_numpy(Y).to(**tkwargs) - 0.1)), axis = 0).values.data
+#         ref_point = torch.from_numpy(np.max(Y, axis=0)).to(**tkwargs)
+#         print("ref_point", ref_point)
+#         # ref_point =  torch.min(torch.cat((self.z.reshape(1,surrogate_model.n_obj),torch.from_numpy(Y).to(**tkwargs) - 0.1)), axis = 0).values.data
         
-        sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
-        # solve surrogate problem
-        # define acquisition functions
-        with torch.no_grad():
-            pred = problem.evaluate(X)
-        pred = torch.from_numpy(pred).to(**tkwargs)
-        partitioning = FastNondominatedPartitioning(
-            ref_point=ref_point,
-            Y=pred,
-        )
-        acq_func = qExpectedHypervolumeImprovement(
-            model=surrogate_model.bo_model,
-            ref_point=ref_point,
-            partitioning=partitioning,
-            sampler=sampler,
-        )
-        # optimize
-        X_cand, Y_cand_pred = optimize_acqf(
-            acq_function=acq_func,
-            bounds=standard_bounds,
-            q=self.batch_size,
-            num_restarts=NUM_RESTARTS,
-            raw_samples=RAW_SAMPLES,  # used for intialization heuristic
-            options={"batch_limit": 5, "maxiter": 200},
-            sequential=True,
-        )
+#         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
+#         # solve surrogate problem
+#         # define acquisition functions
+#         with torch.no_grad():
+#             pred = problem.evaluate(X)
+#         pred = torch.from_numpy(pred).to(**tkwargs)
+#         partitioning = FastNondominatedPartitioning(
+#             ref_point=ref_point,
+#             Y=pred,
+#         )
+#         acq_func = qExpectedHypervolumeImprovement(
+#             model=surrogate_model.bo_model,
+#             ref_point=ref_point,
+#             partitioning=partitioning,
+#             sampler=sampler,
+            
+#         )
+#         # optimize
+#         X_cand, Y_cand_pred = optimize_acqf(
+#             acq_function=acq_func,
+#             bounds=standard_bounds,
+#             q=self.batch_size,
+#             num_restarts=NUM_RESTARTS,
+#             raw_samples=RAW_SAMPLES,  # used for intialization heuristic
+#             options={"batch_limit": 5, "maxiter": 200},
+#             sequential=True,
+#         )
         
-        # construct solution
-        self.solution = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
-        return self.solution
+#         # construct solution
+#         self.solution = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
+#         return self.solution
