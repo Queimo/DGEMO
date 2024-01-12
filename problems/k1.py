@@ -1,5 +1,5 @@
 import numpy as np
-from .problem import Problem, RiskyProblem
+from .problem import RiskyProblem
 import torch
 from torch import Tensor
 
@@ -7,8 +7,8 @@ class K1(RiskyProblem):
 
     def __init__(self):
         
-        self.sigma = 0.5
-        self.repeat_eval = 3
+        self.sigma = 0.
+        self.repeat_eval = 1
         self.bounds = torch.tensor([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 2
@@ -30,6 +30,10 @@ class K1(RiskyProblem):
     def _evaluate_rho(self, x):
         x_torch = torch.from_numpy(x).float()
         train_rho = self.evaluate_repeat(x_torch).std(dim=-1)
+        #check nan
+        if torch.isnan(train_rho).any():
+            print("nan in rho")
+            train_rho = torch.zeros_like(train_rho)
         return train_rho.numpy() / np.array([18., 1.]) + 1.000E-03
     
     
@@ -54,20 +58,14 @@ class K1(RiskyProblem):
         Y_paretos = solution['y']
         return Y_paretos
     
-    def evaluate_repeat(self, x: Tensor, seed_eval=None) -> Tensor:
+    def evaluate_repeat(self, x: Tensor) -> Tensor:
         y_true = self.f(x)
         sigmas = self.get_noise_var(x)
-
-        if seed_eval is not None:
-            shape = torch.stack([y_true] * self.repeat_eval, dim=-1).shape
-            y = y_true - sigmas * torch.randn(
-                shape, generator=torch.Generator().manual_seed(seed_eval)
-            )
-        else:
-            y_true = torch.stack([y_true] * self.repeat_eval, dim=-1)
-            y = y_true - sigmas.unsqueeze(-1) * torch.pow(torch.randn_like(y_true), 2)
+        y_true = torch.stack([y_true] * self.repeat_eval, dim=-1)
+        y = y_true - sigmas.unsqueeze(-1) * torch.pow(torch.randn_like(y_true), 2)
         return y
 
+    
     # def evaluate_on_test(self, x: Tensor) -> Tensor:
     #     y_true = self.f(x)
     #     sigmas = self.get_noise_var(x)
@@ -114,9 +112,61 @@ class K1(RiskyProblem):
 
         return dict_to_dump
 
+class K2(K1):
+    def __init__(self):
+        super().__init__()
+        self.sigma = 0.2
+        self.repeat_eval = 3
+        
+class K3(K1):
+    def __init__(self):
+        super().__init__()
+        self.sigma = 0.5
+        self.repeat_eval = 3
 
-#test pareto front calculation
+class K4(K1):
+    def __init__(self):
+        super().__init__()
+        self.sigma = 0.7
+        self.repeat_eval = 3
+        
+class K5(K1):
+    def __init__(self):
+        super().__init__()
+        self.sigma = 1.
+        self.repeat_eval = 3
+
+class K6(K1):
+    def __init__(self):
+        super().__init__()
+        self.sigma = 0.2
+        self.repeat_eval = 1
+        
+class K7(K1):
+    def __init__(self):
+        super().__init__()
+        self.sigma = 0.5
+        self.repeat_eval = 1
+        
+class K8(K1):
+    def __init__(self):
+        super().__init__()
+        self.sigma = 0.7
+        self.repeat_eval = 1
+        
+class K9(K1):
+    def __init__(self):
+        super().__init__()
+        self.sigma = 1.
+        self.repeat_eval = 1
+
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     prob = K1()
     true_front = prob.pareto_front()
     print(true_front)
+    
+    #plot pareto front
+    plt.scatter(true_front[:,0], true_front[:,1])
+    plt.show()
+    

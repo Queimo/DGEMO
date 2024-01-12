@@ -5,4 +5,4 @@ from problems.oka import OKA1, OKA2
 from problems.vlmop import VLMOP2, VLMOP3
 from problems.re import RE1, RE2, RE3, RE4, RE5, RE6, RE7
 from problems.mixing import MixingProblem
-from problems.k1 import K1
+from problems.k1 import *
