@@ -50,7 +50,7 @@ def get_solver(name):
 
 
 def get_selection(name):
-    from .selection import HVI, Uncertainty, Random, DGEMOSelect, MOEADSelect
+    from .selection import HVI, Uncertainty, Random, DGEMOSelect, MOEADSelect, IdentitySelect
 
     selection = {
         'hvi': HVI,
@@ -58,6 +58,7 @@ def get_selection(name):
         'random': Random,
         'dgemo': DGEMOSelect,
         'moead': MOEADSelect,
+        'identity': IdentitySelect,
     }
 
     selection['default'] = HVI

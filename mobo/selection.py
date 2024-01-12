@@ -110,6 +110,17 @@ class Random(Selection):
         random_indices = np.random.choice(len(X), size=self.batch_size, replace=False)
         return X[random_indices], None
 
+class IdentitySelect(Selection):
+    '''
+    Random selection
+    '''
+    def select(self, solution, surrogate_model, status, transformation):
+        X = solution['x']
+        X = transformation.undo(x=X)
+        
+        assert len(X) == self.batch_size, "Identity selection requires batch size equal to number of solutions"
+        
+        return X, None
 
 class DGEMOSelect(Selection):
     '''

@@ -53,6 +53,9 @@ class qNEHVISolver(NSGA2Solver):
         ref_point = self.ref_point
         print("ref_point", ref_point)
         
+        # use nsga2 to find pareto front for later plots, has limitations
+        self.solution = super().solve(problem, X, Y) 
+        
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
         # solve surrogate problem
         # define acquisition functions
@@ -63,10 +66,6 @@ class qNEHVISolver(NSGA2Solver):
             prune_baseline=True,  # prune baseline points that have estimated zero probability of being Pareto optimal
             sampler=sampler,
         )
-        
-        
-        self.solution = super().solve(problem, X, Y)
-        
         
         X_cand, Y_cand_pred = optimize_acqf(
             acq_function=acq_func,
@@ -83,54 +82,55 @@ class qNEHVISolver(NSGA2Solver):
         return selection
 
 
-class qEHVISolver(Solver):
+class qEHVISolver(NSGA2Solver):
     '''
     Solver based on PSL
     '''
     def __init__(self, *args, **kwargs):
         
-        super().__init__(algo="",*args,**kwargs)
-    
-    def set_ref_point(self, ref_point):
-        self.ref_point = torch.tensor(ref_point).to(**tkwargs) 
+        super().__init__(*args, **kwargs)
+        
 
-#     def solve(self, problem, X, Y, rho):
-#         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
-#         standard_bounds[1] = 1
-#         surrogate_model = problem.surrogate_model
+    def solve(self, problem, X, Y, rho):
+        standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
+        standard_bounds[1] = 1
+        surrogate_model = problem.surrogate_model
         
-#         ref_point = torch.from_numpy(np.max(Y, axis=0)).to(**tkwargs)
-#         print("ref_point", ref_point)
-#         # ref_point =  torch.min(torch.cat((self.z.reshape(1,surrogate_model.n_obj),torch.from_numpy(Y).to(**tkwargs) - 0.1)), axis = 0).values.data
+        ref_point = self.ref_point
+        print("ref_point", ref_point)
         
-#         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
-#         # solve surrogate problem
-#         # define acquisition functions
-#         with torch.no_grad():
-#             pred = problem.evaluate(X)
-#         pred = torch.from_numpy(pred).to(**tkwargs)
-#         partitioning = FastNondominatedPartitioning(
-#             ref_point=ref_point,
-#             Y=pred,
-#         )
-#         acq_func = qExpectedHypervolumeImprovement(
-#             model=surrogate_model.bo_model,
-#             ref_point=ref_point,
-#             partitioning=partitioning,
-#             sampler=sampler,
+        # use nsga2 to find pareto front for later plots, has limitations
+        self.solution = super().solve(problem, X, Y)
+        
+        sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
+        # solve surrogate problem
+        # define acquisition functions
+               
+        with torch.no_grad():
+            pred = problem.evaluate(X)
+        pred = torch.tensor(pred).to(**tkwargs)
+        
+        partitioning = FastNondominatedPartitioning(
+            ref_point=torch.tensor(ref_point).to(**tkwargs),
+            Y=pred,
+        )
+        acq_func = qExpectedHypervolumeImprovement(
+            ref_point=torch.tensor(ref_point).to(**tkwargs),
+            model=surrogate_model.bo_model,
+            partitioning=partitioning,
+            sampler=sampler,
             
-#         )
-#         # optimize
-#         X_cand, Y_cand_pred = optimize_acqf(
-#             acq_function=acq_func,
-#             bounds=standard_bounds,
-#             q=self.batch_size,
-#             num_restarts=NUM_RESTARTS,
-#             raw_samples=RAW_SAMPLES,  # used for intialization heuristic
-#             options={"batch_limit": 5, "maxiter": 200},
-#             sequential=True,
-#         )
+        )
+        # optimize
+        X_cand, Y_cand_pred = optimize_acqf(
+            acq_function=acq_func,
+            bounds=standard_bounds,
+            q=self.batch_size,
+            num_restarts=NUM_RESTARTS,
+            raw_samples=RAW_SAMPLES,  # used for intialization heuristic
+            options={"batch_limit": 5, "maxiter": 200},
+            sequential=True,
+        )
+        selection = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
         
-#         # construct solution
-#         self.solution = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
-#         return self.solution
+        return selection

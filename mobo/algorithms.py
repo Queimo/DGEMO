@@ -97,7 +97,7 @@ class qNEHVI(MOBO):
         "surrogate": "botorchgp",
         "acquisition": "identity",
         "solver": "qnehvi",
-        "selection": "random",
+        "selection": "identity",
     }
 
 
@@ -106,7 +106,7 @@ class qEHVI(MOBO):
         "surrogate": "botorchgp",
         "acquisition": "identity",
         "solver": "qehvi",
-        "selection": "hvi",
+        "selection": "identity",
     }
 
 
