@@ -34,7 +34,7 @@ class K1(RiskyProblem):
         if torch.isnan(train_rho).any():
             print("nan in rho")
             train_rho = torch.zeros_like(train_rho)
-        return train_rho.numpy() / np.array([18., 1.]) + 1.000E-03
+        return train_rho.numpy() / np.array([18., 1.]) + 1.1212432443345e-04 #introduce numerical love
     
     
     def _calc_pareto_front(self, n_pareto_points=500):
