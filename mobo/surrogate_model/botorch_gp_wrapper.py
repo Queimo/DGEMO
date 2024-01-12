@@ -90,7 +90,10 @@ class BoTorchSurrogateModel(SurrogateModel):
         rho = np.zeros((X.shape[0], self.n_obj))
         for idx, ll in enumerate(self.bo_model.likelihood.likelihoods):
             if hasattr(ll, "noise_covar"):
-                rho[:, idx] = ll.noise_covar.noise_model.posterior(X).mean.squeeze(-1).detach().cpu().numpy()
+                try:
+                    rho[:, idx] = ll.noise_covar.noise_model.posterior(X).mean.squeeze(-1).detach().cpu().numpy()
+                except:
+                    pass
 
         dF = np.stack(dF, axis=1) if calc_gradient else None
         hF = np.stack(hF, axis=1) if calc_hessian else None
