@@ -21,8 +21,6 @@
 cd $HPCWORK/DGEMO
 source $HOME/.zshrc
 micromamba env create -f ./environment.yml -y
-micromamba activate mobo_replica
-pip install pygco
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-python ./main.py
+micromamba activate mobo_auto
+python ./main.py --problem k1 --algo tsemo
 
