@@ -234,7 +234,7 @@ class Problem(PymooProblem):
 
 class RiskyProblem(Problem):
     def _evaluate_rho(self, x):
-        return None
+        return np.zeros_like(self._evaluate_F(x)) # default to no risk
 
     def _evaluate(self, x, out, *args, return_values_of=None, **kwargs):
         if "F" in return_values_of:

@@ -50,7 +50,7 @@ class BoTorchSurrogateModel(SurrogateModel):
             train_y_i = train_y_mean[..., i]
             train_yvar_i = train_y_var[..., i]
             models.append(
-                HeteroskedasticSingleTaskGP(
+                FixedNoiseGP(
                     train_X=train_x,
                     train_Y=train_y_i.unsqueeze(-1),
                     train_Yvar=train_yvar_i.unsqueeze(-1),

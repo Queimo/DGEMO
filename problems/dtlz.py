@@ -1,10 +1,10 @@
 import autograd.numpy as anp
 
-from .problem import Problem
+from .problem import Problem, RiskyProblem
 from pymoo.problems.util import load_pareto_front_from_file
 
 
-class DTLZ(Problem):
+class DTLZ(RiskyProblem):
     def __init__(self, n_var, n_obj, k=None):
 
         if n_var:
