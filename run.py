@@ -41,11 +41,11 @@ def main():
     parser.add_argument('--exp-name', type=str, default=None, help='custom experiment name')
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--n-iter', type=int, default=8)
+    parser.add_argument('--n-init-sample', type=int, default=5, help='number of initial design samples')
     parser.add_argument('--n-var', type=int, default=2)
     parser.add_argument('--n-obj', type=int, default=2)
-
+       
     args = parser.parse_args()
-
 
     start_time = time()
     tasks = []
@@ -67,6 +67,7 @@ def main():
                         --problem {problem} --algo {algo} --seed {seed} \
                         --batch-size {args.batch_size} --n-iter {args.n_iter} \
                         --n-process {args.n_inner_process} \
+                        --n-init-sample {args.n_init_sample} \
                         --subfolder {args.subfolder} --log-to-file'
                     if algo != 'dgemo':
                         command += ' --n-gen 200'
