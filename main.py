@@ -28,9 +28,15 @@ def run_experiment(args, framework_args):
     merge_args = {**vars(args), **framework_args}
         
     name = f"{args.problem}_{args.algo}_{args.seed}_{framework_args['datetime_str']}"
+    
+    if os.environ.get("USERDOMAIN") == "LAPTOP-A6NE8Q39":
+        mode = "offline"
+    else:
+        mode = "online"
+    
     run = wandb.init(project="mobo",
                      config=merge_args,
-                     mode="online",
+                     mode=mode,
                      name=name)
 
     # set seed
