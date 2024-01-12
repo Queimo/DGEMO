@@ -23,4 +23,4 @@ cd $HPCWORK/DGEMO
 source $HOME/.zshrc
 micromamba activate mobo_replica
 
-python ./scripts/run.py $@
+python ./run.py $@
