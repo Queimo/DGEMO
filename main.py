@@ -75,7 +75,7 @@ def run_experiment(args, framework_args):
     if true_pfront is not None:
         exporter.write_truefront_csv(true_pfront)
 
-    for _ in range(args.n_iter):
+    for step in range(args.n_iter):
         # get new design samples and corresponding performance
         X_next, Y_next, rho_next, Y_next_pred_mean, Y_next_pred_std, acq = next(
             solution
@@ -86,11 +86,11 @@ def run_experiment(args, framework_args):
         exporter.save_psmodel()
 
         # print(exporter.get_wandb_data())
-        run.log(exporter.get_wandb_data(args))
+        run.log(exporter.get_wandb_data(args), step=step, commit=False)
 
         # run subprocess for visualization
 
-    run.log({"final_plot": exporter.wand_final_plot()})
+    run.log({"final_plot": exporter.wand_final_plot()}, step=step, commit=True)
     # close logger
     if logger is not None:
         logger.close()

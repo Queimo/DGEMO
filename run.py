@@ -9,6 +9,9 @@ from arguments import extract_args
 import shlex
 from datetime import datetime
 
+MAX_NUM_PENDING_TASKS = 8
+
+
 @ray.remote
 def worker(cmd, problem, algo, seed, datetime_str):
     cmd_args = shlex.split(cmd)
@@ -77,16 +80,14 @@ def main():
                 if args.exp_name is not None:
                     command += f' --exp-name {args.exp_name}'
 
+                if len(tasks) > MAX_NUM_PENDING_TASKS:
+                    completed_tasks, tasks = ray.wait(tasks, num_returns=1)
+                    runtime, ret_problem, ret_algo, ret_seed = ray.get(completed_tasks[0])
+                    print(f'problem {ret_problem} algo {ret_algo} seed {ret_seed} done, time: {time() - start_time:.2f}s, runtime: {runtime:.2f}s')
+
                 task = worker.remote(command, problem, algo, seed, datetime_str)
                 tasks.append(task)
                 print(f'problem {problem} algo {algo} seed {seed} started')
-
-    # completed_tasks = ray.get(tasks)
-    
-    while len(tasks) > 0:
-        completed_tasks, tasks = ray.wait(tasks, num_returns=1)
-        runtime, ret_problem, ret_algo, ret_seed = ray.get(completed_tasks[0])
-        print(f'problem {ret_problem} algo {ret_algo} seed {ret_seed} done, time: {time() - start_time:.2f}s, runtime: {runtime:.2f}s')
 
     print('all experiments done, time: %.2fs' % (time() - start_time))
 
