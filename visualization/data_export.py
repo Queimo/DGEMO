@@ -548,7 +548,7 @@ class DataExport:
 
             fig[kk].update_layout(
                 sliders=sliders,
-                title=f"Performance Space of {problem_name}",
+                title=f"{problem_name}",
                 scene = scene_dict,
                 autosize = False,
                 width = 900,

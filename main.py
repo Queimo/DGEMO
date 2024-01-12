@@ -1,5 +1,5 @@
 import os
-
+import uuid
 os.environ["OMP_NUM_THREADS"] = "1"  # speed up
 import numpy as np
 from problems.common import build_problem
@@ -19,8 +19,19 @@ Main entry for MOBO execution
 def run_experiment(args, framework_args):
     # load arguments
 
+    if "datetime_str" not in framework_args.keys():
+        import datetime
+        framework_args["datetime_str"] = datetime.datetime.now().strftime(
+            "%Y%m%d-%H%M%S"
+        )
+    
     merge_args = {**vars(args), **framework_args}
-    run = wandb.init(project="mobo", config=merge_args, mode="online")
+        
+    name = f"{args.problem}_{args.algo}_{args.seed}_{framework_args['datetime_str']}"
+    run = wandb.init(project="mobo",
+                     config=merge_args,
+                     mode="online",
+                     name=name)
 
     # set seed
     np.random.seed(args.seed)
