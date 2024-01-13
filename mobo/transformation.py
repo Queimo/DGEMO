@@ -108,23 +108,3 @@ class StandardTransform(Transformation):
             # Negative()
             StandardScaler()
         )
-
-import torch
-
-class BoundedScalerTorch(Scaler):
-    def __init__(self, bounds):
-        self.bounds = torch.tensor(bounds)
-
-    def transform(self, X):
-        return torch.clamp((X - self.bounds[0]) / (self.bounds[1] - self.bounds[0]), 0, 1)
-
-    def inverse_transform(self, X):
-        return torch.clamp(X, 0, 1) * (self.bounds[1] - self.bounds[0]) + self.bounds[0]
-    
-class NormalizationXTorch(Transformation):
-    
-        def __init__(self, x_bound):
-            super().__init__(
-                BoundedScalerTorch(x_bound),
-                StandardScaler()
-            )

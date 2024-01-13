@@ -65,11 +65,14 @@ def generate_initial_samples(problem, n_sample):
         feasible = feasible.flatten()
         X_feasible = np.vstack([X_feasible, X[feasible]])
         Y_feasible = np.vstack([Y_feasible, Y[feasible]])
-        rho_feasible = np.vstack([rho_feasible, rho[feasible]]) 
+        if rho is not None:
+            rho_feasible = np.vstack([rho_feasible, rho[feasible]]) 
+        else:
+            rho_feasible = None
         
     
     indices = np.random.permutation(np.arange(len(X_feasible)))[:n_sample]
-    X, Y, rho = X_feasible[indices], Y_feasible[indices], rho_feasible[indices]
+    X, Y, rho = X_feasible[indices], Y_feasible[indices], rho_feasible[indices] if rho_feasible is not None else None
     return X, Y, rho
 
 

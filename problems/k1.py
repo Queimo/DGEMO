@@ -1,15 +1,13 @@
 import numpy as np
-from .problem import RiskyProblem
-import torch
-from torch import Tensor
+from .problem import RiskyProblem, Problem
 
-class K1(RiskyProblem):
+class K1(Problem):
 
     def __init__(self):
         
         self.sigma = 0.
         self.repeat_eval = 1
-        self.bounds = torch.tensor([[0.5, 0.0], [3.5, 1.0]])
+        self.bounds = np.array([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 2
         self.max_hv = 16
@@ -18,23 +16,21 @@ class K1(RiskyProblem):
             n_var=self.dim, 
             n_obj=self.num_objectives, 
             n_constr=0,
-            xl=self.bounds[0,:].numpy(),
-            xu=self.bounds[1,:].numpy(),
+            xl=self.bounds[0,:],
+            xu=self.bounds[1,:],
         )
     
     def _evaluate_F(self, x):
-        x_torch = torch.from_numpy(x).float()
-        train_obj = self.evaluate_repeat(x_torch).mean(dim=-1)
-        return -1 * train_obj.numpy() / np.array([18., 1.]) + np.array([0., 1.])
+        train_obj = self.evaluate_repeat(x).mean(axis=-1)
+        return -1 * train_obj / np.array([18., 1.]) + np.array([0., 1.])
     
     def _evaluate_rho(self, x):
-        x_torch = torch.from_numpy(x).float()
-        train_rho = self.evaluate_repeat(x_torch).std(dim=-1)
+        train_rho = self.evaluate_repeat(x).std(axis=-1)
         #check nan
-        if torch.isnan(train_rho).any():
+        if np.isnan(train_rho).any():
             print("nan in rho")
-            train_rho = torch.zeros_like(train_rho)
-        return train_rho.numpy() / np.array([18., 1.]) + 1.1212432443345e-04 #introduce numerical love
+            train_rho = np.zeros_like(train_rho)
+        return train_rho / np.array([18., 1.]) + 1.1212432443345e-04 #introduce numerical love
     
     
     def _calc_pareto_front(self, n_pareto_points=500):
@@ -58,11 +54,11 @@ class K1(RiskyProblem):
         Y_paretos = solution['y']
         return Y_paretos
     
-    def evaluate_repeat(self, x: Tensor) -> Tensor:
+    def evaluate_repeat(self, x: np.array) -> np.array:
         y_true = self.f(x)
         sigmas = self.get_noise_var(x)
-        y_true = torch.stack([y_true] * self.repeat_eval, dim=-1)
-        y = y_true - sigmas.unsqueeze(-1) * torch.pow(torch.randn_like(y_true), 2)
+        y_true = np.stack([y_true] * self.repeat_eval, axis=-1)
+        y = y_true - np.expand_dims(sigmas, -1) * np.power(np.random.randn(*y_true.shape), 2)
         return y
 
     
@@ -83,34 +79,27 @@ class K1(RiskyProblem):
 
     def f(self, x):
         pH = -(
-            (7.0217 / (1 + torch.exp(-13.2429 * (x[:, 0] - 2.1502))) + 6.2086 - 9) ** 2
+            (7.0217 / (1 + np.exp(-13.2429 * (x[:, 0] - 2.1502))) + 6.2086 - 9) ** 2
         )
 
         troughput = (
             (x[:, 1] / self.bounds[1][1]) ** 0.5
             * 1
-            / (1 + torch.exp(-13.2429 * (x[:, 0] - 2.1502)))
+            / (1 + np.exp(-13.2429 * (x[:, 0] - 2.1502)))
         ) \
             # * 0 + 1. #DANGER
 
-        return torch.stack([pH, troughput]).T 
+        return np.stack([pH, troughput]).T 
 
     def get_noise_var(self, x):
         # bell-shaped noise centered at 1.5
-        sigmas_pH = self.sigma * torch.exp(-20 * (x[:, 0] - 2.15) ** 2)
+        sigmas_pH = self.sigma * np.exp(-20 * (x[:, 0] - 2.15) ** 2)
         sigmas_pH *= x[:, 1] * x[:, 1] * 4
 
-        sigmas_troughput = self.sigma / 200 * torch.ones_like(x[:, 1])
+        sigmas_troughput = self.sigma / 200 * np.ones_like(x[:, 1])
 
-        return torch.stack([sigmas_pH, sigmas_troughput]).T
+        return np.stack([sigmas_pH, sigmas_troughput]).T
 
-    def get_info_to_dump(self, x):
-        dict_to_dump = {
-            "f": self.f(x).squeeze(),
-            "rho": self.get_noise_var(x).squeeze(),
-        }
-
-        return dict_to_dump
 
 class K2(K1):
     def __init__(self):

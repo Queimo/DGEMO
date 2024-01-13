@@ -4,16 +4,10 @@ from .utils import (
     Timer,
     find_pareto_front,
     calc_hypervolume,
-    find_pareto_front_old,
-    calc_hypervolume_old,
 )
 from .factory import init_from_config
 from .transformation import StandardTransform
 
-from botorch.utils.multi_objective.box_decompositions.dominated import (
-    DominatedPartitioning,
-)
-import torch
 """
 Main algorithm framework for Multi-Objective Bayesian Optimization
 """

@@ -102,7 +102,7 @@ def get_solver_args(args=None):
     parser.add_argument('--pop-init-method', type=str, 
         choices=['nds', 'random', 'lhs'], default='nds', 
         help='method to init population')
-    parser.add_argument('--n-process', type=int, default=cpu_count(),
+    parser.add_argument('--n-process', type=int, default=1,
         help='number of processes to be used for parallelization')
     parser.add_argument('--batch-size', type=int, default=1, 
         help='size of the selected batch in one iteration')

@@ -5,9 +5,9 @@ import numpy as np
 from argparse import ArgumentParser
 from problems.common import build_problem
 
-import torch
-from botorch.utils.multi_objective.hypervolume import infer_reference_point
 
+# import torch
+# from botorch.utils.multi_objective.hypervolume import infer_reference_point
 
 class RefPoint:
     
