@@ -1,7 +1,7 @@
 import numpy as np
 from .problem import RiskyProblem, Problem
 
-class K1(Problem):
+class K1(RiskyProblem):
 
     def __init__(self):
         
