@@ -33,7 +33,7 @@ def worker(cmd, problem, algo, seed, datetime_str):
     return runtime, problem, algo, seed
 
 def main():
-    ray.init()  # Initialize Ray
+    ray.init()
     parser = argparse.ArgumentParser()
     parser.add_argument('--problem', type=str, nargs='+', required=True, help='problems to test')
     parser.add_argument('--algo', type=str, nargs='+', required=True, help='algorithms to test')
@@ -88,6 +88,12 @@ def main():
                 task = worker.remote(command, problem, algo, seed, datetime_str)
                 tasks.append(task)
                 print(f'problem {problem} algo {algo} seed {seed} started')
+    
+    while len(tasks) > 0:
+        completed_tasks, tasks = ray.wait(tasks, num_returns=1)
+        runtime, ret_problem, ret_algo, ret_seed = ray.get(completed_tasks[0])
+        print(f'problem {ret_problem} algo {ret_algo} seed {ret_seed} done, time: {time() - start_time:.2f}s, runtime: {runtime:.2f}s')
+    
 
     print('all experiments done, time: %.2fs' % (time() - start_time))
 

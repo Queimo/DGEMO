@@ -63,7 +63,6 @@ def main():
     seed = args.seed
 
     n_algo = len(algo_names)
-    has_family = args.family
     problem_name = os.path.basename(os.path.dirname(problem_dir))
 
     # read result csvs
@@ -73,8 +72,7 @@ def main():
         data_list.append(pd.read_csv(csv_folder + 'EvaluatedSamples.csv'))
         paretoEval_list.append(pd.read_csv(csv_folder + 'ParetoFrontEvaluated.csv'))
         yml_list.append(yaml.load(open(csv_folder + 'args.yml'), Loader=yaml.SafeLoader))
-        if has_family:
-            paretoGP_list.append(pd.read_csv(csv_folder + 'ParetoFrontApproximation.csv'))
+        paretoGP_list.append(pd.read_csv(csv_folder + 'ParetoFrontApproximation.csv'))
 
     true_front_file = os.path.join(problem_dir, 'TrueParetoFront.csv')
     has_true_front = os.path.exists(true_front_file)
@@ -144,8 +142,7 @@ def main():
             # First set of samples
             firstsamples = data_list[kk][data_list[kk]['iterID'] == 0]
             paretoEval_trimmed = paretoEval_list[kk][paretoEval_list[kk]['iterID'] == step]
-            if has_family:
-                paretoGP_trimmed = paretoGP_list[kk][paretoGP_list[kk]['iterID'] == step]
+            paretoGP_trimmed = paretoGP_list[kk][paretoGP_list[kk]['iterID'] == step]
             traceStart = len(fig[kk].data)
 
             scatter = go.Scatter if n_obj == 2 else go.Scatter3d
@@ -208,53 +205,37 @@ def main():
             if n_obj > 2: trace_dict['z'] = firstsamples['f3']
             fig[kk].add_trace(scatter(**trace_dict))
 
-            if has_family:
-                # Adding Trace for Points on Pareto Front
-                if n_obj == 2:
-                    fig[kk].add_trace(scatter(
-                        name='Pareto Family',
-                        visible=False,
-                        mode='markers', 
-                        x=paretoGP_trimmed['Pareto_f1'], 
-                        y=paretoGP_trimmed['Pareto_f2'], 
-                        hovertext = paretoGP_trimmed['hovertext'],
-                        hoverinfo="text",
-                        marker=dict(
-                            color=10*paretoGP_trimmed['ParetoFamily']+1,
-                            size=6,
-                            symbol='circle',
-                            opacity=0.70
-                        )
-                    ))
-                else:
-                    for family in list(set(paretoGP_trimmed['ParetoFamily'])):
-                        if paretoGP_trimmed.shape[0] > 0:
-                            paretoGP_family = paretoGP_trimmed[paretoGP_trimmed['ParetoFamily']==family]
-                            #color = list(set(paretoGP_family['color']))[0]
-                            # fig[kk].add_trace(go.Mesh3d(
-                            #     name='Pareto Front Approximation',
-                            #     visible=False, 
-                            #     x=paretoGP_family['Pareto_f1'], 
-                            #     y=paretoGP_family['Pareto_f2'], 
-                            #     z=paretoGP_family['Pareto_f3'],
-                            #     hovertext = paretoGP_family['hovertext'],
-                            #     hoverinfo = "text",
-                            #     #color = color,
-                            #     color = family, #np.log10(family),
-                            #     opacity=0.50
-                            # ))
-                            fig[kk].add_trace(scatter(
-                                name='Pareto Front Approximation',
-                                visible=False, 
-                                mode='markers', 
-                                x=paretoGP_family['Pareto_f1'], 
-                                y=paretoGP_family['Pareto_f2'], 
-                                z=paretoGP_family['Pareto_f3'],
-                                hovertext = paretoGP_family['hovertext'],
-                                hoverinfo = "text",
-                                marker=dict(color=10 * family + 1, size=6, symbol='circle', opacity=0.70)
-                            ))
+            # Adding Trace for Points on Pareto Front
+            if n_obj == 2:
+                fig[kk].add_trace(scatter(
+                    name='Pareto Family',
+                    visible=False,
+                    mode='markers', 
+                    x=paretoGP_trimmed['Pareto_f1'], 
+                    y=paretoGP_trimmed['Pareto_f2'], 
+                    hovertext = paretoGP_trimmed['hovertext'],
+                    hoverinfo="text",
+                    marker=dict(
+                        # color=10*paretoGP_trimmed['ParetoFamily']+1,
+                        size=6,
+                        symbol='circle',
+                        opacity=0.70
+                    )
+                ))
+            else:
+                fig[kk].add_trace(scatter(
+                    name='Pareto Front Approximation',
+                    visible=False, 
+                    mode='markers', 
+                    x=paretoGP_trimmed['Pareto_f1'], 
+                    y=paretoGP_trimmed['Pareto_f2'], 
+                    z=paretoGP_trimmed['Pareto_f3'],
+                    hovertext = paretoGP_trimmed['hovertext'],
+                    hoverinfo = "text",
+                    marker=dict(size=6, symbol='circle', opacity=0.70)
+                ))
         
+    
             # Evaluated Pareto front points
             trace_dict = dict(
                 name = 'Pareto Front Evaluated',
@@ -416,19 +397,7 @@ def main():
         # fig[kk].show()
         # fig[kk].write_html(f'{algo_names[kk]}PerformanceSpace.html')
 
-        # number of families in each iteration
-        if has_family:
-            num_families = []
-            nf_str = []
 
-            niter = 0
-            for j in list(set(paretoGP_list[kk]['iterID'])):
-                data_j = paretoGP_list[kk][paretoGP_list[kk]['iterID'] == j]
-                num_families.append(len(set(data_j['ParetoFamily'])))
-                nf_str.append(str(num_families[niter]))
-                niter += 1
-
-            print('Number of families in ' + algo_names[kk] + ' through generations: ' + ','.join(nf_str))
     plotly_grid_plotter(fig, f'./result/{args.problem}/{args.subfolder}/{args.problem}_seed{seed}_performance_space.html', ncols=2 if n_algo > 1 else 1)
     print(f'./result/{args.problem}/{args.subfolder}/{args.problem}_seed{seed}_performance_space.html')
 
