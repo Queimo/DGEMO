@@ -37,15 +37,15 @@ class ParetoSetModel(torch.nn.Module):
 
 # PSL 
 # number of learning steps
-n_steps = 100
+n_steps = 1000
 # number of sampled preferences per step
 n_pref_update = 10 
 # coefficient of LCB
 coef_lcb = 0.1
 # number of sampled candidates on the approxiamte Pareto front
-n_candidate = 128 
+n_candidate = 500 
 # number of optional local search
-n_local = 0
+n_local = 5
 # device
 device = 'cpu'
 
@@ -66,6 +66,8 @@ class PSLSolver(Solver):
     def solve(self, problem, X, Y, rho=None):
         
         surrogate_model = problem.surrogate_model
+        
+        n_steps = 100 if hasattr(surrogate_model, "bo_model") else 1000
         
         self.z =  torch.min(torch.cat((self.z.reshape(1,surrogate_model.n_obj),torch.from_numpy(Y).to(device) - 0.1)), axis = 0).values.data
         

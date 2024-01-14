@@ -390,6 +390,7 @@ def main():
             title=f"Performance Space of {problem_name} using {algo_names[kk]}",
             scene = scene_dict,
             autosize = False,
+            showlegend=False,
             width = 900,
             height = 750,
         )
