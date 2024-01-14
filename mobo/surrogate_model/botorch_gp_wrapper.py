@@ -44,26 +44,27 @@ class BoTorchSurrogateModel(SurrogateModel):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
         # train_y_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
-        train_y_var = train_rho
+        train_y_var = train_rho + 1e-6
         models = []
         for i in range(train_y.shape[1]):
             train_y_i = train_y_mean[..., i]
             train_yvar_i = train_y_var[..., i]
-            models.append(
-                FixedNoiseGP(
-                    train_X=train_x,
-                    train_Y=train_y_i.unsqueeze(-1),
-                    train_Yvar=train_yvar_i.unsqueeze(-1)*0. + 1e-6,
-                )
-            )
             # models.append(
-            #     HeteroskedasticSingleTaskGP(
+            #     FixedNoiseGP(
             #         train_X=train_x,
             #         train_Y=train_y_i.unsqueeze(-1),
             #         train_Yvar=train_yvar_i.unsqueeze(-1),
             #         outcome_transform=Standardize(m=1),
             #     )
             # )
+            models.append(
+                HeteroskedasticSingleTaskGP(
+                    train_X=train_x,
+                    train_Y=train_y_i.unsqueeze(-1),
+                    train_Yvar=train_yvar_i.unsqueeze(-1),
+                    outcome_transform=Standardize(m=1),
+                )
+            )
             # models.append(
             #     SingleTaskGP(
             #         train_x,
@@ -78,7 +79,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         return mll, model
 
     def evaluate(self, X, std=False, calc_gradient=False, calc_hessian=False):
-        X = torch.tensor(X, requires_grad=True).to(**tkwargs)
+        X = torch.tensor(X).to(**tkwargs)
 
         F, dF, hF = [], [], []  # mean
         S, dS, hS = [], [], []  # std
@@ -93,6 +94,7 @@ class BoTorchSurrogateModel(SurrogateModel):
             .variance.sqrt()
             .squeeze(-1)
             .detach()
+            .T
             .cpu()
             .numpy()
         )
@@ -111,21 +113,17 @@ class BoTorchSurrogateModel(SurrogateModel):
         
         S = np.stack(S, axis=1) if std else None
 
-        S = np.stack(S, axis=1) if std else None
-        
         for model in self.bo_model.models:
             if calc_gradient:
                 # Compute the Jacobian for the mean
-                jacobian_mean = torch.autograd.functional.jacobian(lambda x: -model.posterior(x).mean, X).squeeze(1)
-                # Extract the diagonal elements and reshape to [10, 2, 1]
+                jacobian_mean = torch.autograd.functional.jacobian(lambda x: -model.posterior(x).mean, X, vectorize=True).squeeze(1)
                 dF.append(jacobian_mean.diagonal(dim1=0, dim2=1).detach().T.numpy())
             else:
                 dF.append(None)
 
             if std and calc_gradient:
                 # Compute the Jacobian for the standard deviation
-                jacobian_std = torch.autograd.functional.jacobian(lambda x: model.posterior(x).variance.sqrt(), X).squeeze(1)
-                # Extract the diagonal elements and reshape to [10, 2, 1]
+                jacobian_std = torch.autograd.functional.jacobian(lambda x: model.posterior(x).variance.sqrt(), X, vectorize=True).squeeze(1)
                 dS.append(jacobian_std.diagonal(dim1=0, dim2=1).detach().T.numpy())
             else:
                 dS.append(None)
@@ -133,7 +131,6 @@ class BoTorchSurrogateModel(SurrogateModel):
         dF = np.stack(dF, axis=1) if calc_gradient else None
         dS = np.stack(dS, axis=1) if std and calc_gradient else None
         
-        # dS = np.stack(dS, axis=1) if std and calc_gradient else None
         hS = np.stack(hS, axis=1) if std and calc_hessian else None
 
         out = {"F": F, "dF": dF, "hF": hF, "S": S, "dS": dS, "hS": hS, "rho": rho}

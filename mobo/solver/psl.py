@@ -25,7 +25,15 @@ class ParetoSetModel(torch.nn.Module):
         self.fc3 = nn.Linear(256, self.n_var)
        
     def forward(self, pref):
-
+        
+        # tranform pref to spherical coordinates
+        # sqared = pref**2
+        # r = sqared.sum(axis=-1).sqrt()
+        # phis=torch.zeros_like(pref)
+        # phis[:,0] = r
+        # for i in range(pref.shape[1]-1):
+        #     phis[:,i+1] = torch.atan2(torch.pow(pref[:,i+1:],2).sum(axis=-1).sqrt(), pref[:,i])
+        
         x = torch.relu(self.fc1(pref))
         x = torch.relu(self.fc2(x))
         x = self.fc3(x)
@@ -43,7 +51,7 @@ n_pref_update = 10
 # coefficient of LCB
 coef_lcb = 0.1
 # number of sampled candidates on the approxiamte Pareto front
-n_candidate = 500 
+n_candidate = 1000 
 # number of optional local search
 n_local = 5
 # device
@@ -67,7 +75,7 @@ class PSLSolver(Solver):
         
         surrogate_model = problem.surrogate_model
         
-        n_steps = 100 if hasattr(surrogate_model, "bo_model") else 1000
+        n_steps = 1000 if hasattr(surrogate_model, "bo_model") else 1000
         
         self.z =  torch.min(torch.cat((self.z.reshape(1,surrogate_model.n_obj),torch.from_numpy(Y).to(device) - 0.1)), axis = 0).values.data
         
