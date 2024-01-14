@@ -57,6 +57,14 @@ class BoTorchSurrogateModel(SurrogateModel):
                 )
             )
             # models.append(
+            #     HeteroskedasticSingleTaskGP(
+            #         train_X=train_x,
+            #         train_Y=train_y_i.unsqueeze(-1),
+            #         train_Yvar=train_yvar_i.unsqueeze(-1),
+            #         outcome_transform=Standardize(m=1),
+            #     )
+            # )
+            # models.append(
             #     SingleTaskGP(
             #         train_x,
             #         train_y_i.unsqueeze(-1),
@@ -70,7 +78,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         return mll, model
 
     def evaluate(self, X, std=False, calc_gradient=False, calc_hessian=False):
-        X = torch.from_numpy(X).to(**tkwargs)
+        X = torch.tensor(X, requires_grad=True).to(**tkwargs)
 
         F, dF, hF = [], [], []  # mean
         S, dS, hS = [], [], []  # std
@@ -78,6 +86,8 @@ class BoTorchSurrogateModel(SurrogateModel):
         F = (
             -self.bo_model.posterior(X).mean.squeeze(-1).detach().cpu().numpy()
         )  # negative because botorch assumes maximization (undo previous negative)
+        
+        
         S = (
             self.bo_model.posterior(X)
             .variance.sqrt()
@@ -95,14 +105,35 @@ class BoTorchSurrogateModel(SurrogateModel):
                 except:
                     pass
 
-        dF = np.stack(dF, axis=1) if calc_gradient else None
+        # dF = np.stack(dF, axis=1) if calc_gradient else None
         hF = np.stack(hF, axis=1) if calc_hessian else None
         
         
         S = np.stack(S, axis=1) if std else None
 
         S = np.stack(S, axis=1) if std else None
+        
+        for model in self.bo_model.models:
+            if calc_gradient:
+                # Compute the Jacobian for the mean
+                jacobian_mean = torch.autograd.functional.jacobian(lambda x: -model.posterior(x).mean, X).squeeze(1)
+                # Extract the diagonal elements and reshape to [10, 2, 1]
+                dF.append(jacobian_mean.diagonal(dim1=0, dim2=1).detach().T.numpy())
+            else:
+                dF.append(None)
+
+            if std and calc_gradient:
+                # Compute the Jacobian for the standard deviation
+                jacobian_std = torch.autograd.functional.jacobian(lambda x: model.posterior(x).variance.sqrt(), X).squeeze(1)
+                # Extract the diagonal elements and reshape to [10, 2, 1]
+                dS.append(jacobian_std.diagonal(dim1=0, dim2=1).detach().T.numpy())
+            else:
+                dS.append(None)
+
+        dF = np.stack(dF, axis=1) if calc_gradient else None
         dS = np.stack(dS, axis=1) if std and calc_gradient else None
+        
+        # dS = np.stack(dS, axis=1) if std and calc_gradient else None
         hS = np.stack(hS, axis=1) if std and calc_hessian else None
 
         out = {"F": F, "dF": dF, "hF": hF, "S": S, "dS": dS, "hS": hS, "rho": rho}

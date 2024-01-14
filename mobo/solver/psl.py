@@ -37,7 +37,7 @@ class ParetoSetModel(torch.nn.Module):
 
 # PSL 
 # number of learning steps
-n_steps = 1000 
+n_steps = 100
 # number of sampled preferences per step
 n_pref_update = 10 
 # coefficient of LCB

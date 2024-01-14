@@ -73,7 +73,7 @@ class qNEHVISolver(NSGA2Solver):
             q=self.batch_size,
             num_restarts=NUM_RESTARTS,
             raw_samples=RAW_SAMPLES,  # used for intialization heuristic
-            options={"batch_limit": 6, "maxiter": 2000},
+            options={"batch_limit": self.batch_size, "maxiter": 2000},
             sequential=True,
         )
         
@@ -128,7 +128,7 @@ class qEHVISolver(NSGA2Solver):
             q=self.batch_size,
             num_restarts=NUM_RESTARTS,
             raw_samples=RAW_SAMPLES,  # used for intialization heuristic
-            options={"batch_limit": 6, "maxiter": 2000},
+            options={"batch_limit": self.batch_size, "maxiter": 2000},
             sequential=True,
         )
         selection = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}

@@ -59,7 +59,7 @@ def get_surroagte_args(args=None):
     parser.add_argument('--surrogate', type=str, 
         choices=['gp', 'ts', 'botorchgp'], default='gp', 
         help='type of the surrogate model')
-    parser.add_argument('--n-spectral-pts', type=int, default=100, 
+    parser.add_argument('--n-spectral-pts', type=int, default=1500, 
         help='number of points for spectral sampling')
     parser.add_argument('--nu', type=int,
         choices=[1, 3, 5, -1], default=5,

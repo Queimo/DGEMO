@@ -39,7 +39,7 @@ class K1(RiskyProblem):
         from mobo.solver import NSGA2Solver
         from arguments import get_solver_args
          
-        prob = get_problem('k1')
+        prob = self.__class__()
         X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
         
         #namespace to dict

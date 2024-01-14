@@ -83,14 +83,23 @@ class Custom(MOBO):
     config = None
 
 
-class PSL(MOBO):
+class PSLbot(MOBO):
     config = {
-        "surrogate": "gp",
+        # "surrogate": "gp",
+        "surrogate": "botorchgp",
         "acquisition": "identity",
         "solver": "psl",
         "selection": "hvi",
     }
 
+class PSL(MOBO):
+    config = {
+        "surrogate": "gp",
+        # "surrogate": "botorchgp",
+        "acquisition": "identity",
+        "solver": "psl",
+        "selection": "hvi",
+    }
 
 class qNEHVI(MOBO):
     config = {
@@ -122,6 +131,7 @@ def get_algorithm(name):
         "parego": ParEGO,
         "custom": Custom,
         "psl": PSL,
+        "pslbot": PSLbot, # botorch gp
         "qnehvi": qNEHVI,
         "qehvi": qEHVI,
     }
