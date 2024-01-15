@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from sklearn.cluster import KMeans
-from pymoo.factory import get_performance_indicator
-from pymoo.algorithms.nsga2 import calc_crowding_distance
+# from pymoo.factory import get_performance_indicator
+# from pymoo.algorithms.nsga2 import calc_crowding_distance
 
 '''
 Selection methods for new batch of samples to evaluate on real problem

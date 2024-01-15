@@ -1,5 +1,5 @@
 from .solver import Solver
-from pymoo.algorithms.nsga2 import NSGA2
+from pymoo.algorithms.moo.nsga2 import NSGA2
 
 
 class NSGA2Solver(Solver):

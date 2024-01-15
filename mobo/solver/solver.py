@@ -1,8 +1,9 @@
 import numpy as np
 from pymoo.optimize import minimize
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
-from pymoo.operators.sampling.random_sampling import FloatRandomSampling
-from pymoo.operators.sampling.latin_hypercube_sampling import LatinHypercubeSampling
+from pymoo.operators.sampling.rnd import FloatRandomSampling
+from pymoo.operators.sampling.lhs import LatinHypercubeSampling
+
 from external import lhs
 
 

@@ -1,7 +1,7 @@
 import numpy as np
 from ..solver import Solver
 from pymoo.optimize import minimize
-from pymoo.algorithms.so_cmaes import CMAES
+from pymoo.algorithms.soo.nonconvex.cmaes import CMAES
 from pymoo.decomposition.tchebicheff import Tchebicheff
 from .utils import ScalarizedEvaluator
 from multiprocessing import Process, Queue

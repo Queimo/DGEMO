@@ -1,5 +1,5 @@
 import numpy as np
-from pymoo.model.evaluator import Evaluator
+from pymoo.core.evaluator import Evaluator
 
 '''
 Evaluate a scalar value of a multi-objective problem by scalarization (decomposition)
