@@ -14,7 +14,7 @@ from botorch.models.gp_regression import (
 from botorch.models.model_list_gp_regression import ModelListGP
 from botorch.models.transforms.outcome import Standardize
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
-from botorch.fit import fit_gpytorch_model
+from botorch.optim.fit import fit_gpytorch_scipy
 
 import botorch
 
@@ -38,7 +38,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         Y_torch = torch.tensor(Y).to(**tkwargs)
         rho_torch = torch.tensor(rho).to(**tkwargs) if rho is not None else None
         self.mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
-        fit_gpytorch_model(self.mll)
+        fit_gpytorch_scipy(self.mll)
 
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint

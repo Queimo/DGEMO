@@ -1,4 +1,6 @@
 from . import NSGA2Solver, Solver
+from pymoo.algorithms.nsga2 import NSGA2
+
 
 import numpy as np
 import torch

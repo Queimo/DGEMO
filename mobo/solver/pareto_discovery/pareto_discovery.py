@@ -1,10 +1,10 @@
 import numpy as np
 from scipy.optimize import minimize
 from scipy.linalg import null_space
-from pymoo.core.algorithm import Algorithm
-from pymoo.core.duplicate import DefaultDuplicateElimination
-from pymoo.core.individual import Individual
-from pymoo.core.initialization import Initialization
+from pymoo.model.algorithm import Algorithm
+from pymoo.model.duplicate import DefaultDuplicateElimination
+from pymoo.model.individual import Individual
+from pymoo.model.initialization import Initialization
 from multiprocessing import Process, Queue, cpu_count
 import sys
 

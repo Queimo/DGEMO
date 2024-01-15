@@ -1,6 +1,6 @@
 from .solver import Solver
 import numpy as np
-from pymoo.algorithms.moo.moead import MOEAD
+from pymoo.algorithms.moead import MOEAD
 
 
 class MOEADSolver(Solver):

@@ -185,9 +185,11 @@ class DataExport:
         df1 = pd.DataFrame(data=d1)
         df2 = pd.DataFrame(data=d2)
         df3 = pd.DataFrame(data=d3)
-        self.export_data = pd.concat([self.export_data, df1], ignore_index=True, axis=0)
-        self.export_pareto = pd.concat([self.export_pareto, df2], ignore_index=True, axis=0) 
-        self.export_approx_pareto = pd.concat([self.export_approx_pareto, df3], ignore_index=True, axis=0)
+        self.export_data = self.export_data.append(df1, ignore_index=True)
+        self.export_pareto = self.export_pareto.append(df2, ignore_index=True)
+        self.export_approx_pareto = self.export_approx_pareto.append(
+            df3, ignore_index=True
+        )
 
     def save_psmodel(self):
         """

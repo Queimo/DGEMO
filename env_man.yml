@@ -1,24 +1,18 @@
-name: mobo_39_auto
+name: mobo
 channels:
 - conda-forge
 - pkgs/main
 dependencies:
-- pip
-- python=3.9
+- pip=20.0.2
+- python=3.7.7
 - pip:
   - autograd
   - pandas
   - plotly
-  - pymoo==0.4.0
+  - pymoo
   - scikit-learn
   - scipy
-  - wandb
-  - ray
   - torch
-  - torchvision
-  - torchaudio
-  - --extra-index-url https://download.pytorch.org/whl/cu118
-  - botorch
+  - wandb
   - pyyaml
-  - cython
-  - pygco
+  - ray

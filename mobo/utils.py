@@ -1,7 +1,6 @@
 from time import time
 import numpy as np
-# from pymoo.factory import get_performance_indicator
-from pymoo.util.hv import hv
+from pymoo.factory import get_performance_indicator
 
 class Timer:
     '''
@@ -47,8 +46,8 @@ def calc_hypervolume(pfront, ref_point):
     '''
     Calculate hypervolume of pfront based on ref_point
     '''
-    # hv = get_performance_indicator('hv', ref_point=ref_point)
-    return hv(ref_point=ref_point, F=pfront)
+    hv = get_performance_indicator('hv', ref_point=ref_point)
+    return hv.calc(pfront)
 
 
 def safe_divide(x1, x2):

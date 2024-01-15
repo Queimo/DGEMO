@@ -3,31 +3,13 @@ import autograd
 from autograd.numpy import row_stack
 from multiprocessing import cpu_count
 from multiprocessing.pool import ThreadPool
+from pymoo.model.problem import Problem as PymooProblem
+from pymoo.model.problem import at_least2d, evaluate_in_parallel
 
-from pymoo.core.problem import Problem as PymooProblem
-from pymoo.util.misc import at_least_2d as at_least2d
+"""
+Problem definition built upon Pymoo's Problem class, added some custom features
+"""
 
-# legacy pymoo
-from autograd.core import VJPNode
-from autograd.tracer import new_box
-
-def evaluate_in_parallel(_x, calc_gradient, func, args, kwargs):
-    _out = {}
-    if calc_gradient:
-        _out["__autograd__"], _ = run_and_trace(func, _x, *[_out])
-    else:
-        func(_x, _out, *args, **kwargs)
-    return _out
-
-# runs the function by making sure the calculations are traced using autograd
-def run_and_trace(fun, x, *args, **kwargs):
-    start_node = VJPNode.new_root()
-
-    start_box = new_box(x, 0, start_node)
-    out = fun(start_box, *args, **kwargs)
-
-    return start_box, out
-##
 
 class Problem(PymooProblem):
     def evaluate(
@@ -89,7 +71,7 @@ class Problem(PymooProblem):
 
         # all values that are set in the evaluation function
         values_not_set = [
-            val for val in return_values_of if val not in ["F"]
+            val for val in return_values_of if val not in self.evaluation_of
         ]
 
         # have a look if gradients are not set and try to use autograd and calculate grading if implemented using it
@@ -105,10 +87,7 @@ class Problem(PymooProblem):
 
         # calculate the output array - either elementwise or not. also consider the gradient
         # NOTE: pass return_values_of to evaluation function to avoid unnecessary computation
-        
-        elementwise_evaluation = False
-        
-        if elementwise_evaluation:
+        if self.elementwise_evaluation:
             out = self._evaluate_elementwise(
                 X,
                 calc_gradient,
