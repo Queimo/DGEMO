@@ -26,8 +26,13 @@ def worker(cmd, problem, algo, seed, datetime_str):
         # run_experiment_nsga2(args, framework_args)
         pass
     else:
-        run_experiment(args, framework_args)
-    
+        try:
+            run_experiment(args, framework_args)
+        except Exception as e:
+            print(e)
+            print(f'problem {problem} algo {algo} seed {seed} failed, time: {time() - start_time:.2f}s')
+            return 0, problem, algo, seed
+        
     runtime = time() - start_time
     
     return runtime, problem, algo, seed
@@ -83,7 +88,8 @@ def main():
                 if len(tasks) > MAX_NUM_PENDING_TASKS:
                     completed_tasks, tasks = ray.wait(tasks, num_returns=1)
                     runtime, ret_problem, ret_algo, ret_seed = ray.get(completed_tasks[0])
-                    print(f'problem {ret_problem} algo {ret_algo} seed {ret_seed} done, time: {time() - start_time:.2f}s, runtime: {runtime:.2f}s')
+                    if runtime != 0:
+                        print(f'problem {ret_problem} algo {ret_algo} seed {ret_seed} done, time: {time() - start_time:.2f}s, runtime: {runtime:.2f}s')
 
                 task = worker.remote(command, problem, algo, seed, datetime_str)
                 tasks.append(task)
@@ -92,7 +98,8 @@ def main():
     while len(tasks) > 0:
         completed_tasks, tasks = ray.wait(tasks, num_returns=1)
         runtime, ret_problem, ret_algo, ret_seed = ray.get(completed_tasks[0])
-        print(f'problem {ret_problem} algo {ret_algo} seed {ret_seed} done, time: {time() - start_time:.2f}s, runtime: {runtime:.2f}s')
+        if runtime != 0:
+            print(f'problem {ret_problem} algo {ret_algo} seed {ret_seed} done, time: {time() - start_time:.2f}s, runtime: {runtime:.2f}s')
     
 
     print('all experiments done, time: %.2fs' % (time() - start_time))
