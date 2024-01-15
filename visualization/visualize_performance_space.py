@@ -71,7 +71,8 @@ def main():
         csv_folder = f'{problem_dir}/{algo_name}/{seed}/'
         data_list.append(pd.read_csv(csv_folder + 'EvaluatedSamples.csv'))
         paretoEval_list.append(pd.read_csv(csv_folder + 'ParetoFrontEvaluated.csv'))
-        yml_list.append(yaml.load(open(csv_folder + 'args.yml'), Loader=yaml.SafeLoader))
+        with open(csv_folder + 'args.yml') as f:
+            yml_list.append(yaml.load(f, Loader=yaml.SafeLoader))
         paretoGP_list.append(pd.read_csv(csv_folder + 'ParetoFrontApproximation.csv'))
 
     true_front_file = os.path.join(problem_dir, 'TrueParetoFront.csv')

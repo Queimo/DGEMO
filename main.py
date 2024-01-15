@@ -1,13 +1,14 @@
 import os
 import uuid
-os.environ["OMP_NUM_THREADS"] = "1"  # speed up
+# os.environ["OMP_NUM_THREADS"] = "1"  # speed up
 import numpy as np
 from problems.common import build_problem
 from mobo.algorithms import get_algorithm
 from visualization.data_export import DataExport
-from utils import save_args, setup_logger
+from utils import save_args
 from ref_point import RefPoint
 # import torch
+import gc
 
 import wandb
 
@@ -62,7 +63,6 @@ def run_experiment(args, framework_args):
 
     # save arguments & setup logger
     save_args(args, framework_args)
-    logger = setup_logger(args)
     print(problem, optimizer, sep="\n")
 
     # initialize data exporter
@@ -82,18 +82,17 @@ def run_experiment(args, framework_args):
         )
         # update & export current status to csv
         exporter.update(X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acq)
-        exporter.write_csvs()
-        exporter.save_psmodel()
 
         # print(exporter.get_wandb_data())
         run.log(exporter.get_wandb_data(args), step=step, commit=False)
 
         # run subprocess for visualization
+        gc.collect()
 
+    exporter.write_csvs()
+    exporter.save_psmodel()
     run.log({"final_plot": exporter.wand_final_plot()}, step=step, commit=True)
     # close logger
-    if logger is not None:
-        logger.close()
 
     # data['export_pareto'] = wandb.Table(dataframe=self.export_pareto)
     # data['export_approx_pareto'] = wandb.Table(dataframe=self.export_approx_pareto)

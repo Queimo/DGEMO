@@ -251,7 +251,6 @@ class DataExport:
         # get argument values and initializations
 
         n_algo = 1
-        has_family = False
         problem_dir = os.path.join(
             self.result_dir, "..", ".."
         )  # result/problem/subfolder/

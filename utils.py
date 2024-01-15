@@ -28,17 +28,3 @@ def save_args(general_args, framework_args):
     with open(args_path, 'w') as f:
         yaml.dump(all_args, f, default_flow_style=False, sort_keys=False)
 
-
-def setup_logger(args):
-    '''
-    Log to file if needed
-    '''
-    logger = None
-
-    if args.log_to_file:
-        result_dir = get_result_dir(args)
-        log_path = os.path.join(result_dir, 'log.txt')
-        logger = open(log_path, 'w')
-        sys.stdout = logger
-    
-    return logger

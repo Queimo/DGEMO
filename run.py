@@ -2,17 +2,18 @@ import ray
 import argparse
 import os
 import signal
-from time import time
+from time import time, sleep
 from main import run_experiment
 # from baselines.nsga2 import run_experiment as run_experiment_nsga2
 from arguments import extract_args
 import shlex
 from datetime import datetime
+import gc
 
 MAX_NUM_PENDING_TASKS = 8
 
 
-@ray.remote
+@ray.remote(num_cpus=2)
 def worker(cmd, problem, algo, seed, datetime_str):
     cmd_args = shlex.split(cmd)
     cmd_args = cmd_args[2:]
@@ -91,9 +92,11 @@ def main():
                     if runtime != 0:
                         print(f'problem {ret_problem} algo {ret_algo} seed {ret_seed} done, time: {time() - start_time:.2f}s, runtime: {runtime:.2f}s')
 
+                sleep(1)
                 task = worker.remote(command, problem, algo, seed, datetime_str)
                 tasks.append(task)
                 print(f'problem {problem} algo {algo} seed {seed} started')
+                gc.collect()
     
     while len(tasks) > 0:
         completed_tasks, tasks = ray.wait(tasks, num_returns=1)
