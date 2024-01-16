@@ -30,8 +30,8 @@ def run_experiment(args, framework_args):
         
     name = f"{args.problem}_{args.algo}_{args.seed}_{framework_args['datetime_str']}"
     
-    if os.environ.get("USERDOMAIN") == "LAPTOP-A6NE8Q39":
-        mode = "disabled"
+    if os.environ.get("USERDOMAIN") == "LAPTOP-A6NE8Q39" or True:
+        mode = "offline"
     else:
         mode = "online"
     
