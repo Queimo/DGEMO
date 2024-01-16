@@ -20,7 +20,7 @@
 ### Change to the work directory
 cd $HPCWORK/DGEMO
 source $HOME/.zshrc
-micromamba env create -f ./environment.yml -y
-micromamba activate mobo_auto
+micromamba env create -f ./env_man.yml -y
+micromamba activate mobo
 python ./main.py --problem k1 --algo tsemo
 

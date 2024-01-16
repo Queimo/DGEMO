@@ -21,6 +21,6 @@
 ### Change to the work directory
 cd $HPCWORK/DGEMO
 source $HOME/.zshrc
-micromamba activate mobo_auto
+micromamba activate mobo
 
 python ./run.py $@
