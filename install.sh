@@ -23,11 +23,11 @@ source $HOME/.zshrc
 micromamba env create -f ./env_man.yml -y
 micromamba activate mobo
 rm -rf pymoo
-pip uninstall numpy 
-pip install numpy
-git clone --depth 1 --branch 0.4.2 https://github.com/anyoptimization/pymoo
+git clone --no-checkout https://github.com/anyoptimization/pymoo.git
 cd pymoo
+git checkout d8af6a4
 python setup.py build_ext --inplace --cythonize
+pip install . 
 cd ..
 pip install pygco
 python ./main.py --problem k1 --algo tsemo

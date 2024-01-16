@@ -13,7 +13,7 @@ import gc
 MAX_NUM_PENDING_TASKS = 11
 
 
-@ray.remote()
+@ray.remote
 def worker(cmd, problem, algo, seed, datetime_str):
     cmd_args = shlex.split(cmd)
     cmd_args = cmd_args[2:]
