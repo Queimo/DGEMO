@@ -11,8 +11,7 @@ from botorch.acquisition.multi_objective.monte_carlo import (
     qNoisyExpectedHypervolumeImprovement,
 )
 
-from botorch.acquisition.multi_objective.logei import qLogExpectedHypervolumeImprovement, qLogExpectedHypervolumeImprovement
-
+from botorch.acquisition.multi_objective.logei import qLogExpectedHypervolumeImprovement, qLogNoisyExpectedHypervolumeImprovement
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 from botorch.utils.multi_objective.box_decompositions.non_dominated import (
     FastNondominatedPartitioning,
@@ -61,7 +60,7 @@ class qNEHVISolver(NSGA2Solver):
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
         # solve surrogate problem
         # define acquisition functions
-        acq_func = qNoisyExpectedHypervolumeImprovement(
+        acq_func = qLogNoisyExpectedHypervolumeImprovement(
             model=surrogate_model.bo_model,
             ref_point=ref_point,  # use known reference point
             X_baseline=torch.from_numpy(X).to(**tkwargs),

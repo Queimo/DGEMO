@@ -54,12 +54,19 @@ def main():
             if n_seed == 1: j = seed
             num_alg_eval = df_HV_list[i].shape[0] - num_init_samples
             for k in [0.25 * num_alg_eval, 0.5 * num_alg_eval, 0.75 * num_alg_eval, num_alg_eval]:
-                df_boxplot = df_boxplot.append({
-                    'SampleId': k, 
-                    'Hypervolume_indicator': df_HV_list[i][f'Hypervolume_indicator_{j + 1}'][int(k) + num_init_samples - 1],
-                    'RunId': j,
-                    'AlgorithmId': i
-                    }, ignore_index=True)
+                # df_boxplot = df_boxplot.append({
+                #     'SampleId': k, 
+                #     'Hypervolume_indicator': df_HV_list[i][f'Hypervolume_indicator_{j + 1}'][int(k) + num_init_samples - 1],
+                #     'RunId': j,
+                #     'AlgorithmId': i
+                #     }, ignore_index=True)
+                #use pd.concat instead of df.append
+                df_boxplot = pd.concat([df_boxplot, pd.DataFrame({
+                    'SampleId': [k], 
+                    'Hypervolume_indicator': [df_HV_list[i][f'Hypervolume_indicator_{j + 1}'][int(k) + num_init_samples - 1]],
+                    'RunId': [j],
+                    'AlgorithmId': [i]
+                    })], ignore_index=True)
 
     # calculate proper range of plot
     minHV = min([min(df.min()) for df in df_HV_list])
