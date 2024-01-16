@@ -22,6 +22,7 @@ cd $HPCWORK/DGEMO
 source $HOME/.zshrc
 micromamba env create -f ./env_man.yml -y
 micromamba activate mobo
+pip install pymoo==0.4.2.2 --force-reinstall
 pip install pygco
 python ./main.py --problem k1 --algo tsemo
 
