@@ -20,6 +20,5 @@ dependencies:
   - torchaudio
   - --extra-index-url https://download.pytorch.org/whl/cu118
   - botorch
-  - cython
-  - pygco
+  - Cython
   - pyyaml
