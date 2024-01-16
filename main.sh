@@ -14,12 +14,18 @@
 #SBATCH --time=2:00:00
 
 ### Request memory you need for your job in MB
-#SBATCH --mem-per-cpu=2000
+### leave out any other parameters
+#SBATCH --time=02:00:00
+
+### Request memory you need for your job in MB
+#SBATCH --mem-per-cpu=3500
+
 ### Request number of CPUs
-#SBATCH --cpus-per-task=24
+#SBATCH --ntasks=20
+
 
 ### Change to the work directory
-cd $HPCWORK/DGEMO
+cd $HOME/MA/DGEMO
 source $HOME/.zshrc
 micromamba activate mobo
 
