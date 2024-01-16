@@ -84,7 +84,7 @@ class MOBO:
         self.status['pfront'], pfront_idx = find_pareto_front(self.Y, return_index=True)
         self.status['pset'] = self.X[pfront_idx]
         self.status['hv'] = calc_hypervolume(self.status['pfront'], self.ref_point_handler.get_ref_point(is_botorch=False))
-        print('Current hypervolume: %.4f' % self.status['hv'])
+        # print('Current hypervolume: %.4f' % self.status['hv'])
     
     def step(self):
         

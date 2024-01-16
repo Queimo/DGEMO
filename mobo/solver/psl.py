@@ -106,13 +106,13 @@ class PSLSolver(Solver):
             x = self.psmodel(pref_vec)
             x_np = x.detach().cpu().numpy()
             
-            # obtain the value/grad of mean/std for each obj
-            # TODO only call once
-            mean = torch.from_numpy(surrogate_model.evaluate(x_np)['F']).to(device)
-            mean_grad = torch.from_numpy(surrogate_model.evaluate(x_np, calc_gradient=True)['dF']).to(device)
             
-            std = torch.from_numpy(surrogate_model.evaluate(x_np, std=True)['S']).to(device)
-            std_grad = torch.from_numpy(surrogate_model.evaluate(x_np, std=True, calc_gradient=True)['dS']).to(device)
+            out = surrogate_model.evaluate(x_np, std=True, calc_gradient=True)
+            
+            mean, mean_grad, std, std_grad = torch.from_numpy(out['F']).to(device), \
+                                            torch.from_numpy(out['dF']).to(device), \
+                                            torch.from_numpy(out['S']).to(device), \
+                                            torch.from_numpy(out['dS']).to(device)
             
             # calculate the value/grad of tch decomposition with LCB
             value = mean - coef_lcb * std

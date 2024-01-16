@@ -83,8 +83,7 @@ class BoTorchSurrogateModel(SurrogateModel):
             train_Yvar=train_y_var,
         )
         mll = ExactMarginalLogLikelihood(model.likelihood, model)
-        with _fast_solves(True):
-            fit_gpytorch_mll_torch(mll)
+        fit_gpytorch_model(mll, max_retries=5)
 
         return mll, model
 
