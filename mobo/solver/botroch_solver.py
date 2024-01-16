@@ -11,6 +11,8 @@ from botorch.acquisition.multi_objective.monte_carlo import (
     qNoisyExpectedHypervolumeImprovement,
 )
 
+from botorch.acquisition.multi_objective.logei import qLogExpectedHypervolumeImprovement, qLogExpectedHypervolumeImprovement
+
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 from botorch.utils.multi_objective.box_decompositions.non_dominated import (
     FastNondominatedPartitioning,
@@ -67,15 +69,41 @@ class qNEHVISolver(NSGA2Solver):
             sampler=sampler,
         )
         
-        X_cand, Y_cand_pred = optimize_acqf(
-            acq_function=acq_func,
-            bounds=standard_bounds,
-            q=self.batch_size,
-            num_restarts=NUM_RESTARTS,
-            raw_samples=RAW_SAMPLES,  # used for intialization heuristic
-            options={"batch_limit": self.batch_size, "maxiter": 2000},
-            sequential=True,
-        )
+        options = {"batch_limit": self.batch_size, "maxiter": 2000}
+        
+        while options["batch_limit"] >= 1:
+            try:
+                torch.cuda.empty_cache()
+                X_cand, Y_cand_pred = optimize_acqf(
+                    acq_function=acq_func,
+                    bounds=standard_bounds,
+                    q=self.batch_size,
+                    num_restarts=NUM_RESTARTS,
+                    raw_samples=RAW_SAMPLES,  # used for intialization heuristic
+                    options=options,
+                    sequential=True,
+                )
+                torch.cuda.empty_cache()
+                break
+            except RuntimeError as e:
+                if options["batch_limit"] > 1:
+                    print(
+                        "Got a RuntimeError in `optimize_acqf`. "
+                        "Trying with reduced `batch_limit`."
+                    )
+                    options["batch_limit"] //= 2
+                    continue
+                else:
+                    raise e 
+        # X_cand, Y_cand_pred = optimize_acqf(
+        #     acq_function=acq_func,
+        #     bounds=standard_bounds,
+        #     q=self.batch_size,
+        #     num_restarts=NUM_RESTARTS,
+        #     raw_samples=RAW_SAMPLES,  # used for intialization heuristic
+        #     options={"batch_limit": self.batch_size, "maxiter": 2000},
+        #     sequential=True,
+        # )
         
         selection = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
         
@@ -114,23 +142,49 @@ class qEHVISolver(NSGA2Solver):
             ref_point=torch.tensor(ref_point).to(**tkwargs),
             Y=pred,
         )
-        acq_func = qExpectedHypervolumeImprovement(
+        acq_func = qLogExpectedHypervolumeImprovement(
             ref_point=torch.tensor(ref_point).to(**tkwargs),
             model=surrogate_model.bo_model,
             partitioning=partitioning,
             sampler=sampler,
             
         )
-        # optimize
-        X_cand, Y_cand_pred = optimize_acqf(
-            acq_function=acq_func,
-            bounds=standard_bounds,
-            q=self.batch_size,
-            num_restarts=NUM_RESTARTS,
-            raw_samples=RAW_SAMPLES,  # used for intialization heuristic
-            options={"batch_limit": self.batch_size, "maxiter": 2000},
-            sequential=True,
-        )
+        options = {"batch_limit": self.batch_size, "maxiter": 2000}
+        
+        while options["batch_limit"] >= 1:
+            try:
+                torch.cuda.empty_cache()
+                X_cand, Y_cand_pred = optimize_acqf(
+                    acq_function=acq_func,
+                    bounds=standard_bounds,
+                    q=self.batch_size,
+                    num_restarts=NUM_RESTARTS,
+                    raw_samples=RAW_SAMPLES,  # used for intialization heuristic
+                    options=options,
+                    sequential=True,
+                )
+                torch.cuda.empty_cache()
+                break
+            except RuntimeError as e:
+                if options["batch_limit"] > 1:
+                    print(
+                        "Got a RuntimeError in `optimize_acqf`. "
+                        "Trying with reduced `batch_limit`."
+                    )
+                    options["batch_limit"] //= 2
+                    continue
+                else:
+                    raise e 
+        # X_cand, Y_cand_pred = optimize_acqf(
+        #     acq_function=acq_func,
+        #     bounds=standard_bounds,
+        #     q=self.batch_size,
+        #     num_restarts=NUM_RESTARTS,
+        #     raw_samples=RAW_SAMPLES,  # used for intialization heuristic
+        #     options={"batch_limit": self.batch_size, "maxiter": 2000},
+        #     sequential=True,
+        # )
+        
         selection = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
         
         return selection

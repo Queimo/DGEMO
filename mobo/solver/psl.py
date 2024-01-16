@@ -75,7 +75,7 @@ class PSLSolver(Solver):
         
         surrogate_model = problem.surrogate_model
         
-        n_steps = 500 if hasattr(surrogate_model, "bo_model") else 500
+        n_steps = 100 if hasattr(surrogate_model, "bo_model") else 500
         
         self.z =  torch.min(torch.cat((self.z.reshape(1,surrogate_model.n_obj),torch.from_numpy(Y).to(device) - 0.1)), axis = 0).values.data
         

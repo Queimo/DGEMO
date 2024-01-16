@@ -6,8 +6,8 @@ from argparse import ArgumentParser
 from problems.common import build_problem
 
 
-# import torch
-# from botorch.utils.multi_objective.hypervolume import infer_reference_point
+import torch
+from botorch.utils.multi_objective.hypervolume import infer_reference_point
 
 class RefPoint:
     
@@ -19,8 +19,8 @@ class RefPoint:
         np.random.seed(seed)
         _, _, _, Y_init, rho_init = build_problem(problem, n_var, n_obj, n_init_sample)
     
-        # self.ref_point_botroch = infer_reference_point(torch.tensor(-Y_init)).numpy().tolist()
-        self.ref_point_botroch = np.max(-Y_init, axis=0).tolist()
+        self.ref_point_botroch = infer_reference_point(torch.tensor(-Y_init)).numpy().tolist()
+        # self.ref_point_botroch = np.max(-Y_init, axis=0).tolist()
         self.ref_point_pymoo= np.max(Y_init, axis=0).tolist()
         # self.ref_point_pymoo = (-infer_reference_point(torch.tensor(-Y_init)).numpy()).tolist()
         print(self)

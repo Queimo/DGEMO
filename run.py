@@ -10,7 +10,7 @@ import shlex
 from datetime import datetime
 import gc
 
-MAX_NUM_PENDING_TASKS = 8
+MAX_NUM_PENDING_TASKS = 5
 
 
 @ray.remote(num_cpus=2)
