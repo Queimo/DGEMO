@@ -53,13 +53,13 @@ coef_lcb = 0.1
 # number of sampled candidates on the approxiamte Pareto front
 n_candidate = 1000 
 # number of optional local search
-n_local = 5
+n_local = 0
 # device
 device = 'cpu'
 
 
 
-class PSLSolver(Solver):
+class RAPSLSolver(Solver):
     '''
     Solver based on PSL
     '''
@@ -107,16 +107,23 @@ class PSLSolver(Solver):
             x_np = x.detach().cpu().numpy()
             
             
-            out = surrogate_model.evaluate(x_np, std=True, calc_gradient=True)
+            out = surrogate_model.evaluate(x_np, std=True, noise=True, calc_gradient=True)
             
-            mean, mean_grad, std, std_grad = torch.from_numpy(out['F']).to(device), \
-                                            torch.from_numpy(out['dF']).to(device), \
-                                            torch.from_numpy(out['S']).to(device), \
-                                            torch.from_numpy(out['dS']).to(device)
-            
+            mean = torch.from_numpy(out['F']).to(device)
+            mean_grad = torch.from_numpy(out['dF']).to(device)
+            std = torch.from_numpy(out['S']).to(device)
+            std_grad = torch.from_numpy(out['dS']).to(device)
+            rho_F = torch.from_numpy(out['rho_F']).to(device)
+            drho_F = torch.from_numpy(out['drho_F']).to(device)
+            rho_S = torch.from_numpy(out['rho_S']).to(device)
+            drho_S = torch.from_numpy(out['drho_S']).to(device)
+
+            gamma = 0.5
+            coef_lcb_rho = 0.1
+                
             # calculate the value/grad of tch decomposition with LCB
-            value = mean - coef_lcb * std
-            value_grad = mean_grad - coef_lcb * std_grad
+            value = mean - coef_lcb * std + gamma * (rho_F - coef_lcb_rho * rho_S)
+            value_grad = mean_grad - coef_lcb * std_grad + gamma * (drho_F - coef_lcb_rho * drho_S)
             
             tch_idx = torch.argmax((1 / pref_vec) * (value - self.z), axis = 1)
             tch_idx_mat = [torch.arange(len(tch_idx)),tch_idx]

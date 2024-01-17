@@ -92,6 +92,15 @@ class PSLbot(MOBO):
         "selection": "hvi",
     }
 
+class RAPSLbot(MOBO):
+    config = {
+        "surrogate": "botorchgp",
+        "acquisition": "identity",
+        "solver": "rapsl",
+        "selection": "hvi",
+    }
+
+
 class PSL(MOBO):
     config = {
         "surrogate": "gp",
@@ -132,6 +141,7 @@ def get_algorithm(name):
         "custom": Custom,
         "psl": PSL,
         "pslbot": PSLbot, # botorch gp
+        "rapslbot": RAPSLbot,
         "qnehvi": qNEHVI,
         "qehvi": qEHVI,
     }

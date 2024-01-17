@@ -32,7 +32,8 @@ def get_acquisition(name):
 
 
 def get_solver(name):
-    from .solver import NSGA2Solver, MOEADSolver, ParetoDiscoverySolver, ParEGOSolver, PSLSolver, qNEHVISolver, qEHVISolver
+    from .solver import NSGA2Solver, MOEADSolver, ParetoDiscoverySolver, \
+    ParEGOSolver, PSLSolver, qNEHVISolver, qEHVISolver, RAqNEHVISolver, RAPSLSolver
 
     solver = {
         'nsga2': NSGA2Solver,
@@ -40,8 +41,10 @@ def get_solver(name):
         'discovery': ParetoDiscoverySolver,
         'parego': ParEGOSolver,
         'psl': PSLSolver,
+        'rapsl': RAPSLSolver,
         'qnehvi': qNEHVISolver,
         'qehvi': qEHVISolver,
+        'raqnehvi': RAqNEHVISolver,
     }
 
     solver['default'] = NSGA2Solver

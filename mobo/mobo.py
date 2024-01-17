@@ -166,6 +166,8 @@ class MOBO:
             X_next, Y_next, rho_next, Y_next_pred_mean, Y_next_pred_std, acquisition = self.step()
             
             yield X_next, Y_next, rho_next, Y_next_pred_mean, Y_next_pred_std, acquisition
+            
+        
 
     def __str__(self):
         return (

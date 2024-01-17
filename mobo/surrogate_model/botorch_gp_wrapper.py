@@ -24,6 +24,7 @@ from mobo.utils import safe_divide
 
 from linear_operator.settings import _fast_solves
 
+
 class BoTorchSurrogateModel(SurrogateModel):
 
     """
@@ -38,84 +39,67 @@ class BoTorchSurrogateModel(SurrogateModel):
     def fit(self, X, Y, rho=None):
         X_torch = torch.tensor(X).to(**tkwargs).detach()
         Y_torch = torch.tensor(Y).to(**tkwargs).detach()
-        rho_torch = torch.tensor(rho).to(**tkwargs).detach() if rho is not None else None
+        rho_torch = (
+            torch.tensor(rho).to(**tkwargs).detach() if rho is not None else None
+        )
         mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
-        fit_gpytorch_model(mll)
+        fit_gpytorch_model(mll, max_retries=5)
         # fit_gpytorch_mll_torch(mll, step_limit=1000)
-        
 
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
         # train_y_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
         train_y_var = train_rho + 1e-6
-        models = []
-        for i in range(train_y.shape[1]):
-            train_y_i = train_y_mean[..., i]
-            train_yvar_i = train_y_var[..., i]
-            # models.append(
-            #     FixedNoiseGP(
-            #         train_X=train_x,
-            #         train_Y=train_y_i.unsqueeze(-1),
-            #         train_Yvar=train_yvar_i.unsqueeze(-1),
-            #         outcome_transform=Standardize(m=1),
-            #     )
-            # )
-            models.append(
-                SingleTaskGP(
-                    train_X=train_x,
-                    train_Y=train_y_i.unsqueeze(-1),
-                    train_Yvar=train_yvar_i.unsqueeze(-1),
-                )
-            )
-            # models.append(
-            #     SingleTaskGP(
-            #         train_x,
-            #         train_y_i.unsqueeze(-1),
-            #         # train_yvar_i.unsqueeze(-1),
-            #         outcome_transform=Standardize(m=1),
-            #     )
-            # )
-        # model = ModelListGP(*models)
-        model = SingleTaskGP(
+        model = HeteroskedasticSingleTaskGP(
             train_X=train_x,
             train_Y=train_y_mean,
             train_Yvar=train_y_var,
         )
         mll = ExactMarginalLogLikelihood(model.likelihood, model)
-        fit_gpytorch_model(mll, max_retries=5)
 
         return mll, model
 
-    def evaluate(self, X, std=False, calc_gradient=False, calc_hessian=False):
+    def evaluate(self, X, std=False, noise=False, calc_gradient=False, calc_hessian=False,):
         X = torch.tensor(X).to(**tkwargs)
 
         F, dF, hF = None, None, None  # mean
         S, dS, hS = None, None, None  # std
+        rho_F, drho_F = None, None  # noise mean
+        rho_S, drho_S = None, None  # noise std 
 
-        F = (
-            -self.bo_model.posterior(X).mean.squeeze(-1).detach().cpu().numpy()
-        )  # negative because botorch assumes maximization (undo previous negative)
-        
-        
-        S = (
-            self.bo_model.posterior(X)
-            .variance.sqrt()
-            .squeeze(-1)
-            .detach()
-            .cpu()
-            .numpy()
-        )
-        
-        rho = np.zeros((X.shape[0], self.n_obj))
-        # for idx, ll in enumerate(self.bo_model.likelihood.likelihoods):
-        #     if hasattr(ll, "noise_covar"):
-        #         try:
-        #             rho[:, idx] = ll.noise_covar.noise_model.posterior(X).mean.squeeze(-1).detach().cpu().numpy()
-        #         except:
-        #             pass
+        post = self.bo_model.posterior(X)
+        # negative because botorch assumes maximization (undo previous negative)
+        F = -post.mean.squeeze(-1).detach().cpu().numpy()
+        S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
-        
+        if noise:
+            rho_post = self.bo_model.likelihood.noise_covar.noise_model.posterior(X)
+            rho_F = rho_post.mean.detach().cpu().numpy()
+            rho_S = rho_post.variance.sqrt().detach().cpu().numpy()
+            if calc_gradient:
+                jac_rho = torch.autograd.functional.jacobian(
+                    lambda x: self.bo_model.likelihood.noise_covar.noise_model(x).mean.T, X
+                )
+                drho_F = (
+                    jac_rho.diagonal(dim1=0, dim2=2)
+                    .transpose(0, -1)
+                    .transpose(1, 2)
+                    .detach()
+                    .numpy()
+                )
+                if std:
+                    jac_rho = torch.autograd.functional.jacobian(
+                        lambda x: self.bo_model.likelihood.noise_covar.noise_model(x).variance.sqrt().T, X
+                    )
+                    drho_S = (
+                        jac_rho.diagonal(dim1=0, dim2=2)
+                        .transpose(0, -1)
+                        .transpose(1, 2)
+                        .detach()
+                        .numpy()
+                    )
+
         # #simplest 2d --> 2d test problem
         # def f(X):
         #     return torch.stack([X[:, 0]**2 + 0.1*X[:, 1]**2 , -X[:, 1]**2 -0.1*(X[:, 0]**2)]).T
@@ -125,12 +109,40 @@ class BoTorchSurrogateModel(SurrogateModel):
         # jac_batch = jacobian_mean.diagonal(dim1=0,dim2=2).transpose(0,-1).transpose(1,2).numpy()
 
         if calc_gradient:
-            jac_F = torch.autograd.functional.jacobian(lambda x: -self.bo_model(x).mean.T, X)
-            dF = jac_F.diagonal(dim1=0,dim2=2).transpose(0,-1).transpose(1,2).detach().numpy()
+            jac_F = torch.autograd.functional.jacobian(
+                lambda x: -self.bo_model(x).mean.T, X
+            )
+            dF = (
+                jac_F.diagonal(dim1=0, dim2=2)
+                .transpose(0, -1)
+                .transpose(1, 2)
+                .detach()
+                .numpy()
+            )
 
-        if std and calc_gradient:
-            jac_S = torch.autograd.functional.jacobian(lambda x: self.bo_model(x).variance.sqrt().T, X)
-            dS = jac_S.diagonal(dim1=0,dim2=2).transpose(0,-1).transpose(1,2).detach().numpy()
-        
-        out = {"F": F, "dF": dF, "hF": hF, "S": S, "dS": dS, "hS": hS, "rho": rho}
+            if std:
+                jac_S = torch.autograd.functional.jacobian(
+                    lambda x: self.bo_model(x).variance.sqrt().T, X
+                )
+                dS = (
+                    jac_S.diagonal(dim1=0, dim2=2)
+                    .transpose(0, -1)
+                    .transpose(1, 2)
+                    .detach()
+                    .numpy()
+                )
+
+        out = {
+            "F": F,
+            "dF": dF,
+            "hF": hF,
+            "S": S,
+            "dS": dS,
+            "hS": hS,
+            "rho_F": rho_F,
+            "drho_F": drho_F,
+            "rho_S": rho_S,
+            "drho_S": drho_S,
+        }
+         
         return out
