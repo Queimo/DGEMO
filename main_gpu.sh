@@ -13,11 +13,8 @@
 ### leave out any other parameters
 #SBATCH --time=2:00:00
 
-### leave out any other parameters
-#SBATCH --time=02:00:00
-
 ### Request memory you need for your job in MB
-#SBATCH --mem-per-cpu=3500
+#SBATCH --mem-per-cpu=2000
 
 ### Request number of CPUs
 #SBATCH --ntasks=20
