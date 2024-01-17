@@ -17,7 +17,7 @@
 #SBATCH --mem-per-cpu=2000
 
 ### Request number of CPUs
-#SBATCH --ntasks=20
+#SBATCH --ntasks=12
 
 #SBATCH --gres=gpu:1
 
