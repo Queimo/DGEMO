@@ -15,6 +15,7 @@ from botorch.models.model_list_gp_regression import ModelListGP
 from botorch.models.transforms.outcome import Standardize
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
 from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
+from gpytorch.mlls.predictive_log_likelihood import PredictiveLogLikelihood
 from botorch.fit import fit_gpytorch_mll, fit_gpytorch_model, fit_gpytorch_mll_torch
 
 import botorch
@@ -42,8 +43,9 @@ class BoTorchSurrogateModel(SurrogateModel):
         rho_torch = (
             torch.tensor(rho).to(**tkwargs).detach() if rho is not None else None
         )
+        print("rho_max", rho_torch.max())
         mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
-        fit_gpytorch_model(mll, max_retries=5)
+        fit_gpytorch_mll(mll, max_retries=5)
         # fit_gpytorch_mll_torch(mll, step_limit=1000)
 
     def initialize_model(self, train_x, train_y, train_rho=None):
@@ -57,7 +59,6 @@ class BoTorchSurrogateModel(SurrogateModel):
             train_Yvar=train_y_var,
         )
         mll = ExactMarginalLogLikelihood(model.likelihood, model)
-
         return mll, model
 
     def evaluate(self, X, std=False, noise=False, calc_gradient=False, calc_hessian=False,):

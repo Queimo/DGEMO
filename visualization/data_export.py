@@ -13,7 +13,7 @@ import pandas as pd
 from .arguments import get_vis_args
 from .utils import get_problem_dir, get_algo_names, defaultColors
 import yaml
-
+import pathlib
 
 """
 Export csv files for external visualization.
@@ -80,6 +80,7 @@ class DataExport:
         self.export_approx_pareto = pd.DataFrame(
             columns=column_names
         )  # export pareto approximation data
+        self.export_approx_all = pd.DataFrame(columns=["iterID"])  # export pareto approximation data
 
         self.has_family = (
             hasattr(self.optimizer.selection, "has_family")
@@ -181,6 +182,42 @@ class DataExport:
                 d3[f"Pareto_f{i + 1}"] = approx_pfront[:, i]
 
             d3["ParetoFamily"] = np.zeros(approx_front_samples)
+            
+            n_grid = 25
+            x2 = np.linspace(0, 1, n_grid)
+            x1 = np.linspace(0, 1, n_grid)
+            x1_mesh, x2_mesh = np.meshgrid(x1, x2)
+            x_mesh = np.vstack((x1_mesh.flatten(), x2_mesh.flatten())).T
+    
+            val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True)
+            
+            
+            #create dataframe from val dict. If field in val is 2d array, then create columns for each element in array
+            d4 = {}
+            for key in val:
+                if val[key] is None:
+                    continue
+                if val[key].ndim == 1:
+                    d4[key] = val[key]
+                else:
+                    for i in range(val[key].shape[1]):
+                        col_name = f"{key}_{i + 1}"
+                        d4[col_name] = val[key][:, i]
+            
+            # add iteration id and x1, x2 columns
+            d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
+            
+            X_mesh, Y_mesh = self.transformation.undo(
+                x_mesh, val["F"]
+            )
+            d4["F_1"] = Y_mesh[:, 0]
+            d4["F_2"] = Y_mesh[:, 1]
+            
+            d4["x1"] = X_mesh[:, 0]
+            d4["x2"] = X_mesh[:, 1]
+                        
+            df4 = pd.DataFrame(data=d4)
+            
 
         df1 = pd.DataFrame(data=d1)
         df2 = pd.DataFrame(data=d2)
@@ -194,6 +231,7 @@ class DataExport:
         self.export_data = pd.concat([self.export_data, df1], ignore_index=True, axis=0)
         self.export_pareto = pd.concat([self.export_pareto, df2], ignore_index=True, axis=0)
         self.export_approx_pareto = pd.concat([self.export_approx_pareto, df3], ignore_index=True, axis=0)
+        self.export_approx_all = pd.concat([self.export_approx_all, df4], ignore_index=True, axis=0)
 
     def save_psmodel(self):
         """
@@ -207,36 +245,43 @@ class DataExport:
         """
         Export data to csv files.
         """
-        dataframes = [self.export_data, self.export_pareto, self.export_approx_pareto]
+        dataframes = [self.export_data, self.export_pareto, self.export_approx_pareto, self.export_approx_all]
         filenames = [
             "EvaluatedSamples",
             "ParetoFrontEvaluated",
             "ParetoFrontApproximation",
+            "ApproximationAll",
         ]
 
         for dataframe, filename in zip(dataframes, filenames):
             filepath = os.path.join(self.result_dir, filename + ".csv")
             dataframe.to_csv(filepath, index=False)
 
-    def write_truefront_csv(self, truefront):
+    def write_truefront_csv(self, truefront_list):
         """
         Export true pareto front to csv files.
         """
         problem_dir = os.path.join(
             self.result_dir, "..", ".."
         )  # result/problem/subfolder/
-        filepath = os.path.join(problem_dir, "TrueParetoFront.csv")
+        
+        #if truefront_list is not list
+        if not isinstance(truefront_list, list):
+            truefront_list = [truefront_list]
+        
+        for index,truefront in enumerate(truefront_list):
+            filepath = os.path.join(problem_dir, f"TrueParetoFront{index}.csv")
 
-        if os.path.exists(filepath):
-            return
+            if os.path.exists(filepath):
+                continue
+            
+            d = {}
+            for i in range(truefront.shape[1]):
+                col_name = f"f{i + 1}"
+                d[col_name] = truefront[:, i]
 
-        d = {}
-        for i in range(truefront.shape[1]):
-            col_name = f"f{i + 1}"
-            d[col_name] = truefront[:, i]
-
-        export_tf = pd.DataFrame(data=d)
-        export_tf.to_csv(filepath, index=False)
+            export_tf = pd.DataFrame(data=d)
+            export_tf.to_csv(filepath, index=False)
 
     def get_wandb_data(self, args=None):
         """
@@ -247,6 +292,7 @@ class DataExport:
         data["hypervolume"] = self.export_data["Hypervolume_indicator"].iloc[-1]
 
         return data
+
 
     def wand_final_plot(self, args=None):
         """
@@ -268,10 +314,15 @@ class DataExport:
         ref_point = self.optimizer.ref_point_handler.get_ref_point()
         paretoGP_list.append(self.export_approx_pareto)
 
-        true_front_file = os.path.join(problem_dir, "TrueParetoFront.csv")
+        
+        true_front_file = os.path.join(problem_dir, "TrueParetoFront0.csv")
         has_true_front = os.path.exists(true_front_file)
         if has_true_front:
             df_truefront = pd.read_csv(true_front_file)
+            
+        #get all true front files
+        tf_paths = pathlib.Path(problem_dir).glob('TrueParetoFront*.csv')
+        df_truefront_list = [pd.read_csv(str(tf_path)) for tf_path in tf_paths]
 
         n_var = len(
             [key for key in data_list[0] if len(key) == 1 and key <= "Z" and key >= "A"]
@@ -525,22 +576,22 @@ class DataExport:
                         fig[kk].add_trace(scatter(**trace_dict))
 
                 # Adding true Pareto front points
-                if has_true_front:
-                    trace_dict = dict(
-                        name="True Pareto Front",
-                        visible=False,
-                        mode="markers",
-                        x=df_truefront["f1"],
-                        y=df_truefront["f2"],
-                        marker=dict(
-                            color="rgba(105, 105, 105, 0.8)",
-                            size=2,
-                            symbol="circle",
-                        ),
-                    )
-                    if n_obj > 2:
-                        trace_dict["z"] = df_truefront["f3"]
-                    fig[kk].add_trace(scatter(**trace_dict))
+                for df_truefront in df_truefront_list:
+                    if has_true_front:
+                        trace_dict = dict(
+                            name="True Pareto Front",
+                            visible=False,
+                            mode="markers",
+                            x=df_truefront["f1"],
+                            y=df_truefront["f2"],
+                            marker=dict(
+                                size=2,
+                                symbol="circle",
+                            ),
+                        )
+                        if n_obj > 2:
+                            trace_dict["z"] = df_truefront["f3"]
+                        fig[kk].add_trace(scatter(**trace_dict))
 
                 traceEnd = len(fig[kk].data) - 1
                 stepTrace.append([i for i in range(traceStart, traceEnd + 1)])

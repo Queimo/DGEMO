@@ -55,7 +55,7 @@ class GaussianProcess(SurrogateModel):
         for i, gp in enumerate(self.gps):
             gp.fit(X, Y[:, i])
         
-    def evaluate(self, X, rho=None, std=False, calc_gradient=False, calc_hessian=False):
+    def evaluate(self, X, rho=None, std=False, calc_gradient=False, calc_hessian=False, **kwargs):
         F, dF, hF = [], [], [] # mean
         S, dS, hS = [], [], [] # std
 

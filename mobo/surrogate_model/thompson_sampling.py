@@ -52,7 +52,7 @@ class ThompsonSampling(GaussianProcess):
             self.bs.append(b.copy())
             self.sf2s.append(sf2)
 
-    def evaluate(self, X, rho=None, std=False, calc_gradient=False, calc_hessian=False):
+    def evaluate(self, X, rho=None, std=False, calc_gradient=False, calc_hessian=False, **kwargs):
         F, dF, hF = [], [], []
         n_sample = X.shape[0] if len(X.shape) > 1 else 1
 

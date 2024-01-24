@@ -4,6 +4,8 @@ import pandas as pd
 from arguments import get_vis_args
 from utils import get_problem_dir, get_algo_names, defaultColorsCycle, defaultColors
 import numpy as np
+import os
+import pathlib
 
 
 def get_data_of_step(pareto_approx_df, selected_iteration):
@@ -19,15 +21,19 @@ def main():
 
     n_algo, n_seed = len(algo_names), args.n_seed
     
-    # Load True Pareto Front once as it is common for all algorithms
-    true_pareto_df = pd.read_csv(f'{problem_dir}/TrueParetoFront.csv')
-
+    #get all true front files
+    tf_paths = pathlib.Path(problem_dir).glob('TrueParetoFront*.csv')
+    df_truefront_list = [pd.read_csv(str(tf_path)) for tf_path in tf_paths]
+    
+    
     for j in range(n_seed):
         # Create one figure for each seed
         fig = go.Figure()
         
         # Add True Pareto Front trace
-        fig.add_trace(go.Scatter(x=true_pareto_df['f1'], y=true_pareto_df['f2'], mode='markers',marker_color="black",name='True Pareto Front'))
+        # fig.add_trace(go.Scatter(x=true_pareto_df['f1'], y=true_pareto_df['f2'], mode='markers',marker_color="black",name='True Pareto Front'))
+        for true_pareto_df in df_truefront_list:
+            fig.add_trace(go.Scatter(x=true_pareto_df['f1'], y=true_pareto_df['f2'], mode='markers',marker_color="black",name='True Pareto Front', opacity=0.5))
 
         # Maximum number of iterations to display
         max_iterations = 20

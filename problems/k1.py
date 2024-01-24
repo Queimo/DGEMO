@@ -3,10 +3,10 @@ from .problem import RiskyProblem, Problem
 
 class K1(RiskyProblem):
 
-    def __init__(self):
+    def __init__(self, sigma=0., repeat_eval=1):
         
-        self.sigma = 0.
-        self.repeat_eval = 1
+        self.sigma = sigma
+        self.repeat_eval = repeat_eval
         self.bounds = np.array([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 2
@@ -33,14 +33,17 @@ class K1(RiskyProblem):
         return train_rho / np.array([18., 1.]) + 1.1212432443345e-04 #introduce numerical love
     
     
-    def _calc_pareto_front(self, n_pareto_points=500):
+    def pareto_front(self, n_pareto_points=500):
         
         from .common import generate_initial_samples, get_problem
         from mobo.solver import NSGA2Solver
         from arguments import get_solver_args
          
-        prob = self.__class__()
+        prob = self.__class__(repeat_eval=100)
         X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
+        
+        Y_l = self.evaluate_repeat(X_init).min(axis=-1)
+        Y_h = self.evaluate_repeat(X_init).max(axis=-1)
         
         #namespace to dict
         solver_args = vars(get_solver_args())
@@ -50,9 +53,13 @@ class K1(RiskyProblem):
 
         # find Pareto front
         solution = solver.solve(prob, X_init, Y_init)
+        solution_l = solver.solve(prob, X_init, Y_l)
+        solution_h = solver.solve(prob, X_init, Y_h)
         
         Y_paretos = solution['y']
-        return Y_paretos
+        Y_paretos_l = solution_l['y']
+        Y_paretos_h = solution_h['y']
+        return [Y_paretos, Y_paretos_l, Y_paretos_h]
     
     def evaluate_repeat(self, x: np.array) -> np.array:
         y_true = self.f(x)
@@ -93,8 +100,11 @@ class K1(RiskyProblem):
 
     def get_noise_var(self, x):
         # bell-shaped noise centered at 1.5
+        # \frac{1}{1+e^{20\left(x-1\right)}}
+        inner = 1/(1 + np.exp(20 * (x[:, 1] - 0.9)))
+        
         sigmas_pH = self.sigma * np.exp(-20 * (x[:, 0] - 2.15) ** 2)
-        sigmas_pH *= x[:, 1] * x[:, 1] * 4
+        sigmas_pH *= np.power(x[:, 1], 4) * 4 * inner
 
         sigmas_troughput = self.sigma / 200 * np.ones_like(x[:, 1])
 
@@ -102,52 +112,61 @@ class K1(RiskyProblem):
 
 
 class K2(K1):
-    def __init__(self):
-        super().__init__()
-        self.sigma = 0.2
-        self.repeat_eval = 3
-        
+    def __init__(self, sigma=0.2, repeat_eval=3):
+        super().__init__(
+            sigma=sigma,
+            repeat_eval=repeat_eval
+        )
+
 class K3(K1):
-    def __init__(self):
-        super().__init__()
-        self.sigma = 0.5
-        self.repeat_eval = 3
+    def __init__(self, sigma=0.5, repeat_eval=3):
+        super().__init__(
+            sigma=sigma,
+            repeat_eval=repeat_eval
+        )
 
 class K4(K1):
-    def __init__(self):
-        super().__init__()
-        self.sigma = 0.7
-        self.repeat_eval = 3
-        
+    def __init__(self, sigma=0.7, repeat_eval=3):
+        super().__init__(
+            sigma=sigma,
+            repeat_eval=repeat_eval
+        )
+
 class K5(K1):
-    def __init__(self):
-        super().__init__()
-        self.sigma = 1.
-        self.repeat_eval = 3
+    def __init__(self, sigma=1.0, repeat_eval=10):
+        super().__init__(
+            sigma=sigma,
+            repeat_eval=repeat_eval
+        )
 
 class K6(K1):
-    def __init__(self):
-        super().__init__()
-        self.sigma = 0.2
-        self.repeat_eval = 1
-        
+    def __init__(self, sigma=0.2, repeat_eval=1):
+        super().__init__(
+            sigma=sigma,
+            repeat_eval=repeat_eval
+        )
+
 class K7(K1):
-    def __init__(self):
-        super().__init__()
-        self.sigma = 0.5
-        self.repeat_eval = 1
-        
+    def __init__(self, sigma=0.5, repeat_eval=1):
+        super().__init__(
+            sigma=sigma,
+            repeat_eval=repeat_eval
+        )
+
 class K8(K1):
-    def __init__(self):
-        super().__init__()
-        self.sigma = 0.7
-        self.repeat_eval = 1
-        
+    def __init__(self, sigma=0.7, repeat_eval=1):
+        super().__init__(
+            sigma=sigma,
+            repeat_eval=repeat_eval
+        )
+
 class K9(K1):
-    def __init__(self):
-        super().__init__()
-        self.sigma = 1.
-        self.repeat_eval = 1
+    def __init__(self, sigma=1.0, repeat_eval=1):
+        super().__init__(
+            sigma=sigma,
+            repeat_eval=repeat_eval
+        )
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

@@ -1,5 +1,5 @@
 # plot each iteration of predicted Pareto front, proposed points, evaluated points for two algorithms
-
+import pathlib
 import os, sys
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -74,11 +74,16 @@ def main():
         with open(csv_folder + 'args.yml') as f:
             yml_list.append(yaml.load(f, Loader=yaml.SafeLoader))
         paretoGP_list.append(pd.read_csv(csv_folder + 'ParetoFrontApproximation.csv'))
-
-    true_front_file = os.path.join(problem_dir, 'TrueParetoFront.csv')
+    
+    true_front_file = os.path.join(problem_dir, "TrueParetoFront0.csv")
     has_true_front = os.path.exists(true_front_file)
     if has_true_front:
         df_truefront = pd.read_csv(true_front_file)
+        
+    #get all true front files
+    tf_paths = pathlib.Path(problem_dir).glob('TrueParetoFront*.csv')
+    df_truefront_list = [pd.read_csv(str(tf_path)) for tf_path in tf_paths]
+
 
     n_var = len([key for key in data_list[0] if len(key) == 1 and key <= 'Z' and key >= 'A'])
     n_obj = len([key for key in data_list[0] if key.startswith('f')])
@@ -323,21 +328,23 @@ def main():
                     fig[kk].add_trace(scatter(**trace_dict))
 
             # Adding true Pareto front points
-            if has_true_front:
-                trace_dict = dict(
-                    name = 'True Pareto Front',
-                    visible=False,
-                    mode='markers', 
-                    x=df_truefront['f1'], 
-                    y=df_truefront['f2'], 
-                    marker=dict(
-                        color='rgba(105, 105, 105, 0.8)',
-                        size=2,
-                        symbol='circle',
+            for df_truefront in df_truefront_list:
+                if has_true_front:
+                    trace_dict = dict(
+                        name="True Pareto Front",
+                        visible=False,
+                        mode="markers",
+                        x=df_truefront["f1"],
+                        y=df_truefront["f2"],
+                        marker=dict(
+                            size=2,
+                            symbol="circle",
+                        ),
                     )
-                )
-                if n_obj > 2: trace_dict['z'] = df_truefront['f3']
-                fig[kk].add_trace(scatter(**trace_dict))
+                    if n_obj > 2:
+                        trace_dict["z"] = df_truefront["f3"]
+                    fig[kk].add_trace(scatter(**trace_dict))
+
                 
             traceEnd = len(fig[kk].data)-1
             stepTrace.append([i for i in range(traceStart,traceEnd+1)])
