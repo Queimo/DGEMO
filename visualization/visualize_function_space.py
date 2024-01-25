@@ -298,7 +298,7 @@ def main():
         # cube axes
         # scene_aspectmode='cube',
     )
-    fig.show()
+    # fig.show()
 
     # Assuming 'fig' is a previously initialized figure object
     # Initialize with subplots for contour plots
@@ -337,7 +337,7 @@ def main():
                     y=y[:, 0],
                     z=approx_all_i[f"F_{i}"].values.reshape((n_grid, n_grid)),
                     colorscale="Viridis",
-                    showscale=True,
+                    showscale=False,
                     visible=(iteration == 1),
                     zmin=min(approx_all_df[f"F_{i}"]),
                     zmax=max(approx_all_df[f"F_{i}"])
@@ -354,7 +354,7 @@ def main():
                     y=y[:, 0],
                     z=approx_all_i[f"S_{i}"].values.reshape((n_grid, n_grid)),
                     colorscale="Viridis",
-                    showscale=True,
+                    showscale=False,
                     visible=(iteration == 1),
                     zmin=min(approx_all_df[f"S_{i}"]),
                     zmax=max(approx_all_df[f"S_{i}"])
@@ -364,22 +364,22 @@ def main():
             )
             
             # add rho_1 rho_2
-            fig.add_trace(
-                go.Contour(
-                    x=x[0],
-                    y=y[:, 0],
-                    z=approx_all_i[f"rho_F_{i}"].values.reshape((n_grid, n_grid)),
-                    colorscale="Viridis",
-                    showscale=True,
-                    visible=(iteration == 1),
-                    zmin=min(approx_all_df[f"rho_F_{i}"]),
-                    zmax=max(approx_all_df[f"rho_F_{i}"])*0.8
-                ),
-                row=i,
-                col=3,
-            )
+            if hasattr(approx_all_i, f"rho_F_{i}"):
+                fig.add_trace(
+                    go.Contour(
+                        x=x[0],
+                        y=y[:, 0],
+                        z=approx_all_i[f"rho_F_{i}"].values.reshape((n_grid, n_grid)),
+                        colorscale="Viridis",
+                        showscale=False,
+                        visible=(iteration == 1),
+                        zmin=min(approx_all_df[f"rho_F_{i}"]),
+                        zmax=np.percentile(approx_all_df[f"rho_F_{i}"], 90)
+                    ),
+                    row=i,
+                    col=3,
+                )
 
-        # data proposed
         for i in range(1, cols + 1):
             for j in range(1, rows + 1):
                 fig.add_trace(
@@ -392,6 +392,25 @@ def main():
                         visible=(iteration == 1),
                         marker=dict(
                             size=8,
+                            color="blue",
+                            symbol="circle",
+                            line=dict(color="black", width=1),
+                        ),
+                    ),
+                    row=j,
+                    col=i,
+                )
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=firstsamples["x1"],
+                        y=firstsamples["x2"],
+                        mode="markers",
+                        hovertext=firstsamples['hovertext'],
+                        hoverinfo="text",
+                        visible=(iteration == 1),
+                        marker=dict(
+                            size=8,
                             color="grey",
                             symbol="circle",
                             line=dict(color="black", width=1),
@@ -400,6 +419,7 @@ def main():
                     row=j,
                     col=i,
                 )
+
 
                 # data proposed
                 fig.add_trace(

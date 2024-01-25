@@ -21,7 +21,9 @@ class K1(RiskyProblem):
         )
     
     def _evaluate_F(self, x):
-        train_obj = self.evaluate_repeat(x).mean(axis=-1)
+        train_obj = self.evaluate_repeat(x)
+        # train_obj = np.quantile(train_obj, 0.01, axis=-1)
+        train_obj = train_obj.mean(axis=-1)
         return -1 * train_obj / np.array([18., 1.]) + np.array([0., 1.])
     
     def _evaluate_rho(self, x):
@@ -133,7 +135,7 @@ class K4(K1):
         )
 
 class K5(K1):
-    def __init__(self, sigma=1.0, repeat_eval=10):
+    def __init__(self, sigma=1.0, repeat_eval=3):
         super().__init__(
             sigma=sigma,
             repeat_eval=repeat_eval

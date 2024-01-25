@@ -118,7 +118,7 @@ class RAPSLSolver(Solver):
             rho_S = torch.from_numpy(out['rho_S']).to(device)
             drho_S = torch.from_numpy(out['drho_S']).to(device)
 
-            gamma = 0.5
+            gamma = 0.1
             coef_lcb_rho = 0.1
                 
             # calculate the value/grad of tch decomposition with LCB
