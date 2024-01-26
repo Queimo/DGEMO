@@ -33,6 +33,8 @@ def main():
 
     command = "python ./visualization/visualize_performance_space_batch.py" + args_str
     ret_code = os.system(command)
+    command = "python ./visualization/visualize_function_space_batch.py" + args_str
+    ret_code = os.system(command)
     command = "python ./visualization/visualize_hv_batch.py" + args_str
     ret_code = os.system(command)
     command = "python ./visualization/visualize_pf.py" + args_str
