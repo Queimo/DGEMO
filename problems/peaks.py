@@ -34,7 +34,7 @@ class Peaks(RiskyProblem):
         return train_rho 
     
     
-    def pareto_front(self, n_pareto_points=500):
+    def pareto_front(self, n_pareto_points=5000):
         
         from .common import generate_initial_samples
         from mobo.utils import find_pareto_front

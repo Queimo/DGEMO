@@ -114,9 +114,9 @@ class Wave:
 
 if __name__ == "__main__":
     
-    prob = Wave(sigma=1., repeat_eval=3)
+    prob = Wave(sigma=.5, repeat_eval=3)
     
-    n = 50
+    n = 6
     
     #create a surface plot with plotly of the objective functions
     import plotly.graph_objects as go
