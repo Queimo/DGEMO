@@ -14,10 +14,10 @@
 #SBATCH --time=2:00:00
 
 ### Request memory you need for your job in MB
-#SBATCH --mem-per-cpu=2000
+#SBATCH --mem-per-cpu=8000
 
 ### Request number of CPUs
-#SBATCH --ntasks=12
+#SBATCH --ntasks=24
 
 #SBATCH --gres=gpu:1
 
