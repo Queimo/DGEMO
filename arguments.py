@@ -104,6 +104,8 @@ def get_solver_args(args=None):
         help='method to init population')
     parser.add_argument('--n-process', type=int, default=1,
         help='number of processes to be used for parallelization')
+    parser.add_argument('--alpha', type=float, default=0.9,
+        help='VaR parameter')
     parser.add_argument('--batch-size', type=int, default=1, 
         help='size of the selected batch in one iteration')
 

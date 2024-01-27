@@ -192,6 +192,7 @@ def get_MARS_NEI(
     X_baseline,
     sampler,
     mvar_ref_point,
+    alpha,
 ):
     r"""Construct the NEI acquisition function with VaR of Chebyshev scalarizations.
     Args:
@@ -212,7 +213,7 @@ def get_MARS_NEI(
     ).squeeze(0)
     # set up mars objective
     mars = MARS(
-        alpha=0.9,
+        alpha=alpha,
         n_w=n_w,
         chebyshev_weights=weights,
         ref_point=mvar_ref_point,
@@ -235,6 +236,9 @@ class MARSSolver(NSGA2Solver):
     '''
     def __init__(self, *args, **kwargs):
         
+        self.alpha = self.kwargs['alpha']
+        print("alpha", self.alpha)
+        
         super().__init__(*args, **kwargs)
         
 
@@ -251,12 +255,14 @@ class MARSSolver(NSGA2Solver):
         
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
         
+        
         acq_func = get_MARS_NEI(
             model=surrogate_model.bo_model,
             n_w=11,
             X_baseline=torch.from_numpy(X).to(**tkwargs),
             sampler=sampler,
             mvar_ref_point=torch.tensor(ref_point),
+            alpha=self.alpha,
         )
         
         options = {"batch_limit": self.batch_size, "maxiter": 2000}

@@ -52,6 +52,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                 print(e)
                 print("retrying fitting...")
         print("failed to fit")
+        mll, self.bo_model = self.initialize_model(X_torch.clone(), Y_torch.clone(), rho_torch.clone())
         fit_gpytorch_mll_torch(mll, step_limit=1000)
 
     def initialize_model(self, train_x, train_y, train_rho=None):
