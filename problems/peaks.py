@@ -34,15 +34,15 @@ class Peaks(RiskyProblem):
         return train_rho 
     
     
-    def pareto_front(self, n_pareto_points=5000):
+    def pareto_front(self, n_pareto_points=50000):
         
         from .common import generate_initial_samples
         from mobo.utils import find_pareto_front
          
-        prob = self.__class__(repeat_eval=100)
+        prob = self.__class__(repeat_eval=50)
         X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
         
-        Y_l = self.evaluate_repeat(X_init).min(axis=-1)
+        Y_l = np.quantile(self.evaluate_repeat(X_init), 0.1, axis=-1)
         Y_h = self.evaluate_repeat(X_init).max(axis=-1)
         
         Y_paretos = find_pareto_front(Y_init)
