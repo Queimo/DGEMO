@@ -42,8 +42,9 @@ class Peaks(RiskyProblem):
         prob = self.__class__(repeat_eval=50)
         X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
         
-        Y_l = np.quantile(self.evaluate_repeat(X_init), 0.1, axis=-1)
-        Y_h = self.evaluate_repeat(X_init).max(axis=-1)
+        Y_l = np.quantile(self.evaluate_repeat(X_init), 0.9, axis=-1)
+        Y_h = np.quantile(self.evaluate_repeat(X_init), 0.1, axis=-1)
+        # Y_h = self.evaluate_repeat(X_init).max(axis=-1)
         
         Y_paretos = find_pareto_front(Y_init)
         Y_paretos_l = find_pareto_front(Y_l)
