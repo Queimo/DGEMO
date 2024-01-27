@@ -31,7 +31,7 @@ def run_experiment(args, framework_args):
     name = f"{args.problem}_{args.algo}_{args.seed}_{framework_args['datetime_str']}"
     
     if os.environ.get("USERDOMAIN") == "LAPTOP-A6NE8Q39":
-        mode = "disabled"
+        mode = "online"
     else:
         mode = "online"
     
@@ -91,7 +91,8 @@ def run_experiment(args, framework_args):
 
         exporter.write_csvs()
         exporter.save_psmodel()
-    run.log({"final_plot": exporter.wand_final_plot()}, step=step, commit=True)
+    run.log({"final_plot": exporter.wand_final_plot()}, step=step, commit=False)
+    run.log({"final_plot2": exporter.wand_final_plot2()}, step=step, commit=True)
     # close logger
 
     # data['export_pareto'] = wandb.Table(dataframe=self.export_pareto)

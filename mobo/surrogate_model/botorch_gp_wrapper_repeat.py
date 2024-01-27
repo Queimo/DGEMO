@@ -22,33 +22,20 @@ from botorch.fit import fit_gpytorch_mll, fit_gpytorch_model, fit_gpytorch_mll_t
 import botorch
 from botorch.acquisition.objective import ExpectationPosteriorTransform
 
-from mobo.surrogate_model.base import SurrogateModel
+from mobo.surrogate_model.botorch_gp_wrapper import BoTorchSurrogateModel
 from mobo.utils import safe_divide
 
 from linear_operator.settings import _fast_solves
 
 
-class BoTorchSurrogateModelReapeat(SurrogateModel):
+class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
 
     """
     Gaussian process
     """
 
     def __init__(self, n_var, n_obj, **kwargs):
-        self.bo_model = None
-        self.mll = None
         super().__init__(n_var, n_obj)
-
-    def fit(self, X, Y, rho=None):
-        X_torch = torch.tensor(X).to(**tkwargs).detach()
-        Y_torch = torch.tensor(Y).to(**tkwargs).detach()
-        rho_torch = (
-            torch.tensor(rho).to(**tkwargs).detach() if rho is not None else None
-        )
-        print("rho_max", rho_torch.max())
-        mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
-        fit_gpytorch_mll(mll, max_retries=5)
-        # fit_gpytorch_mll_torch(mll, step_limit=1000)
 
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
@@ -74,8 +61,6 @@ class BoTorchSurrogateModelReapeat(SurrogateModel):
         rho_F, drho_F = None, None  # noise mean
         rho_S, drho_S = None, None  # noise std 
         
-        
-
         post = self.bo_model.posterior(X, posterior_transform=ExpectationPosteriorTransform(n_w=11))
         # negative because botorch assumes maximization (undo previous negative)
         F = -post.mean.squeeze(-1).detach().cpu().numpy()

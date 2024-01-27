@@ -26,7 +26,7 @@ def get_general_args(args=None):
         help='number of optimization iterations')
     parser.add_argument('--ref-point', type=float, nargs='+', default=None, 
         help='reference point for calculating hypervolume')
-    parser.add_argument('--batch-size', type=int, default=6, 
+    parser.add_argument('--batch-size', type=int, default=1, 
         help='size of the selected batch in one iteration')
 
     parser.add_argument('--seed', type=int, default=0, 
@@ -104,7 +104,7 @@ def get_solver_args(args=None):
         help='method to init population')
     parser.add_argument('--n-process', type=int, default=1,
         help='number of processes to be used for parallelization')
-    parser.add_argument('--batch-size', type=int, default=6, 
+    parser.add_argument('--batch-size', type=int, default=1, 
         help='size of the selected batch in one iteration')
 
     # ParetoDiscovery solver
@@ -139,7 +139,7 @@ def get_selection_args(args=None):
 
     parser.add_argument('--selection', type=str, default='hvi', 
         help='type of selection method for new batch')
-    parser.add_argument('--batch-size', type=int, default=6, 
+    parser.add_argument('--batch-size', type=int, default=1, 
         help='size of the selected batch in one iteration')
 
     args, _ = parser.parse_known_args(args)
