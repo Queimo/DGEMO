@@ -164,7 +164,7 @@ class qNEI(
         # TODO: Implement more efficient way to compute posterior over both training and
         # test points in GPyTorch (https://github.com/cornellius-gp/gpytorch/issues/567)
         posterior = self.model.posterior(
-            X_full, posterior_transform=self.posterior_transform, observation_noise=True
+            X_full, posterior_transform=self.posterior_transform, observation_noise=False
         )
         self._cache_root = False
         if not self._cache_root:
@@ -236,7 +236,7 @@ class MARSSolver(NSGA2Solver):
     '''
     def __init__(self, *args, **kwargs):
         
-        self.alpha = self.kwargs['alpha']
+        self.alpha = kwargs['alpha']
         print("alpha", self.alpha)
         
         super().__init__(*args, **kwargs)
