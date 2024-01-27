@@ -455,11 +455,11 @@ def main():
         # # Show or save the plot
         # plotly_grid_plotter(fig, f'./result/{args.problem}/{args.subfolder}/{args.problem}_seed{seed}_performance_space.html', ncols=2 if n_algo > 1 else 1)
         if args.savefig:
-            fig.write_image(f'{problem_dir}/seed{j}_{algo}_IO_space.png')
+            fig.write_image(f'{problem_dir}/seed{seed}_{algo}_IO_space.png')
         else:
-            fig.write_html(f'{problem_dir}/seed{j}_{algo}_IO_space.html')
+            fig.write_html(f'{problem_dir}/seed{seed}_{algo}_IO_space.html')
 
-        print(f"Saved {problem_dir}/seed{j}_{algo}_IO_space")
+        print(f"Saved {problem_dir}/seed{seed}_{algo}_IO_space")
 
 
 if __name__ == "__main__":

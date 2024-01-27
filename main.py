@@ -89,8 +89,8 @@ def run_experiment(args, framework_args):
         # run subprocess for visualization
         gc.collect()
 
-    exporter.write_csvs()
-    exporter.save_psmodel()
+        exporter.write_csvs()
+        exporter.save_psmodel()
     run.log({"final_plot": exporter.wand_final_plot()}, step=step, commit=True)
     # close logger
 

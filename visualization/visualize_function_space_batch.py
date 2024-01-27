@@ -24,8 +24,6 @@ def main():
             if args.savefig: command += ' --savefig'
 
             ret_code = os.system(command)
-            if ret_code == signal.SIGINT:
-                exit()
         
 
 if __name__ == "__main__":

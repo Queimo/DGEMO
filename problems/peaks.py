@@ -92,7 +92,8 @@ class Peaks(RiskyProblem):
     def get_noise_var(self, X):
         
         x1, x2 = X[:, 0], X[:, 1]
-        noise_factor = self.sigmoid(20 * (x1 - 0.6)) * self.sigmoid(20 * (-x2 + 0.4))
+        # noise_factor = self.sigmoid(20 * (x1 - 0.6)) * self.sigmoid(20 * (-x2 + 0.4))
+        noise_factor = self.sigmoid(20 * (-x2 + 0.4))
         rho1 = self.sigma * noise_factor
         rho2 = self.sigma * noise_factor
         

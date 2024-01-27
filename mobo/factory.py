@@ -3,12 +3,13 @@ Factory for importing different components of the MOBO framework by name
 '''
 
 def get_surrogate_model(name):
-    from .surrogate_model import GaussianProcess, ThompsonSampling, BoTorchSurrogateModel
+    from .surrogate_model import GaussianProcess, ThompsonSampling, BoTorchSurrogateModel, BoTorchSurrogateModelReapeat
     
     surrogate_model = {
         'gp': GaussianProcess,
         'ts': ThompsonSampling,
         'botorchgp': BoTorchSurrogateModel,
+        'botorchgprepeat': BoTorchSurrogateModelReapeat,
     }
 
     surrogate_model['default'] = GaussianProcess
@@ -33,7 +34,7 @@ def get_acquisition(name):
 
 def get_solver(name):
     from .solver import NSGA2Solver, MOEADSolver, ParetoDiscoverySolver, \
-    ParEGOSolver, PSLSolver, qNEHVISolver, qEHVISolver, RAqNEHVISolver, RAPSLSolver
+    ParEGOSolver, PSLSolver, qNEHVISolver, qEHVISolver, RAqNEHVISolver, RAPSLSolver, MARSSolver
 
     solver = {
         'nsga2': NSGA2Solver,
@@ -45,6 +46,7 @@ def get_solver(name):
         'qnehvi': qNEHVISolver,
         'qehvi': qEHVISolver,
         'raqnehvi': RAqNEHVISolver,
+        'mars': MARSSolver,
     }
 
     solver['default'] = NSGA2Solver

@@ -12,7 +12,7 @@ def main():
         "--algo", type=str, nargs="+", default=None, help="algorithms to test"
     )
     parser.add_argument(
-        "--n-seed", type=int, default=8, help="number of different seeds"
+        "--n-seed", type=int, default=1, help="number of different seeds"
     )
     parser.add_argument(
         "--subfolder", type=str, default="default", help="subfolder of result"

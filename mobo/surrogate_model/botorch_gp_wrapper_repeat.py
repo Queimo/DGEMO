@@ -13,11 +13,14 @@ from botorch.models.gp_regression import (
 )
 from botorch.models.model_list_gp_regression import ModelListGP
 from botorch.models.transforms.outcome import Standardize
+from botorch.models.transforms.input import InputPerturbation
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
 from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
+from gpytorch.mlls.predictive_log_likelihood import PredictiveLogLikelihood
 from botorch.fit import fit_gpytorch_mll, fit_gpytorch_model, fit_gpytorch_mll_torch
 
 import botorch
+from botorch.acquisition.objective import ExpectationPosteriorTransform
 
 from mobo.surrogate_model.base import SurrogateModel
 from mobo.utils import safe_divide
@@ -25,7 +28,7 @@ from mobo.utils import safe_divide
 from linear_operator.settings import _fast_solves
 
 
-class BoTorchSurrogateModel(SurrogateModel):
+class BoTorchSurrogateModelReapeat(SurrogateModel):
 
     """
     Gaussian process
@@ -43,16 +46,9 @@ class BoTorchSurrogateModel(SurrogateModel):
             torch.tensor(rho).to(**tkwargs).detach() if rho is not None else None
         )
         print("rho_max", rho_torch.max())
-        for i in range(5):
-            try:
-                mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
-                fit_gpytorch_mll(mll, max_retries=5)
-                return
-            except RuntimeError as e:
-                print(e)
-                print("retrying fitting...")
-        print("failed to fit")
-        fit_gpytorch_mll_torch(mll, step_limit=1000)
+        mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
+        fit_gpytorch_mll(mll, max_retries=5)
+        # fit_gpytorch_mll_torch(mll, step_limit=1000)
 
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
@@ -63,6 +59,9 @@ class BoTorchSurrogateModel(SurrogateModel):
             train_X=train_x,
             train_Y=train_y_mean,
             train_Yvar=train_y_var,
+            #identity input transform to expand
+            input_transform=InputPerturbation(torch.zeros((11, self.n_var), **tkwargs)),
+            outcome_transform=Standardize(m=self.n_obj),
         )
         mll = ExactMarginalLogLikelihood(model.likelihood, model)
         return mll, model
@@ -74,19 +73,21 @@ class BoTorchSurrogateModel(SurrogateModel):
         S, dS, hS = None, None, None  # std
         rho_F, drho_F = None, None  # noise mean
         rho_S, drho_S = None, None  # noise std 
+        
+        
 
-        post = self.bo_model.posterior(X)
+        post = self.bo_model.posterior(X, posterior_transform=ExpectationPosteriorTransform(n_w=11))
         # negative because botorch assumes maximization (undo previous negative)
         F = -post.mean.squeeze(-1).detach().cpu().numpy()
         S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
         if noise:
             rho_post = self.bo_model.likelihood.noise_covar.noise_model.posterior(X)
-            rho_F = rho_post.mean.detach().cpu().numpy()
-            rho_S = rho_post.variance.sqrt().detach().cpu().numpy()
+            rho_F = rho_post.mean.detach().cpu().numpy()[::11,:]
+            rho_S = rho_post.variance.sqrt().detach().cpu().numpy()[::11,:]
             if calc_gradient:
                 jac_rho = torch.autograd.functional.jacobian(
-                    lambda x: self.bo_model.likelihood.noise_covar.noise_model(x).mean.T, X
+                    lambda x: self.bo_model.likelihood.noise_covar.noise_model.posterior(x).mean.T, X
                 )
                 drho_F = (
                     jac_rho.diagonal(dim1=0, dim2=2)
@@ -97,7 +98,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                 )
                 if std:
                     jac_rho = torch.autograd.functional.jacobian(
-                        lambda x: self.bo_model.likelihood.noise_covar.noise_model(x).variance.sqrt().T, X
+                        lambda x: self.bo_model.likelihood.noise_covar.noise_model.posterior(x, posterior_transform=ExpectationPosteriorTransform(n_w=11)).variance.sqrt().T, X
                     )
                     drho_S = (
                         jac_rho.diagonal(dim1=0, dim2=2)
@@ -117,7 +118,7 @@ class BoTorchSurrogateModel(SurrogateModel):
 
         if calc_gradient:
             jac_F = torch.autograd.functional.jacobian(
-                lambda x: -self.bo_model(x).mean.T, X
+                lambda x: -self.bo_model.posterior(x, posterior_transform=ExpectationPosteriorTransform(n_w=11)).mean.T, X
             )
             dF = (
                 jac_F.diagonal(dim1=0, dim2=2)
@@ -129,7 +130,7 @@ class BoTorchSurrogateModel(SurrogateModel):
 
             if std:
                 jac_S = torch.autograd.functional.jacobian(
-                    lambda x: self.bo_model(x).variance.sqrt().T, X
+                    lambda x: self.bo_model.posterior(x).variance.sqrt().T, X
                 )
                 dS = (
                     jac_S.diagonal(dim1=0, dim2=2)

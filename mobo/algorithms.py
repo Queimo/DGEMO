@@ -104,7 +104,6 @@ class RAPSLbot(MOBO):
 class PSL(MOBO):
     config = {
         "surrogate": "gp",
-        # "surrogate": "botorchgp",
         "acquisition": "identity",
         "solver": "psl",
         "selection": "hvi",
@@ -118,6 +117,13 @@ class qNEHVI(MOBO):
         "selection": "identity",
     }
 
+class MARS(MOBO):
+    config = {
+        "surrogate": "botorchgprepeat",
+        "acquisition": "identity",
+        "solver": "mars",
+        "selection": "identity",
+    }
 
 class qEHVI(MOBO):
     config = {
@@ -144,5 +150,6 @@ def get_algorithm(name):
         "rapslbot": RAPSLbot,
         "qnehvi": qNEHVI,
         "qehvi": qEHVI,
+        "mars": MARS,
     }
     return algo[name]
