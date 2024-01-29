@@ -34,6 +34,7 @@ class BoTorchSurrogateModel(SurrogateModel):
     def __init__(self, n_var, n_obj, **kwargs):
         self.bo_model = None
         self.mll = None
+        self.input_transform = None
         super().__init__(n_var, n_obj)
 
     def fit(self, X, Y, rho=None):
@@ -64,6 +65,8 @@ class BoTorchSurrogateModel(SurrogateModel):
             train_X=train_x,
             train_Y=train_y_mean,
             train_Yvar=train_y_var,
+            input_transform=self.input_transform,
+            outcome_transform=Standardize(m=self.n_obj),
         )
         mll = ExactMarginalLogLikelihood(model.likelihood, model)
         return mll, model
@@ -93,7 +96,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                     jac_rho.diagonal(dim1=0, dim2=2)
                     .transpose(0, -1)
                     .transpose(1, 2)
-                    .detach()
+                    .detach().cpu()
                     .numpy()
                 )
                 if std:
@@ -104,7 +107,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                         jac_rho.diagonal(dim1=0, dim2=2)
                         .transpose(0, -1)
                         .transpose(1, 2)
-                        .detach()
+                        .detach().cpu()
                         .numpy()
                     )
 
@@ -124,7 +127,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                 jac_F.diagonal(dim1=0, dim2=2)
                 .transpose(0, -1)
                 .transpose(1, 2)
-                .detach()
+                .detach().cpu()
                 .numpy()
             )
 
@@ -136,7 +139,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                     jac_S.diagonal(dim1=0, dim2=2)
                     .transpose(0, -1)
                     .transpose(1, 2)
-                    .detach()
+                    .detach().cpu()
                     .numpy()
                 )
 

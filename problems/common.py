@@ -37,6 +37,7 @@ def get_problem_options():
         ('k8', K8),
         ('k9', K9),
         ('peaks', Peaks),
+        ('peaks3', Peaks3),
     ]
     return problems
 

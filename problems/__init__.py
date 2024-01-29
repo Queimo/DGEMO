@@ -7,3 +7,4 @@ from problems.re import RE1, RE2, RE3, RE4, RE5, RE6, RE7
 from problems.mixing import MixingProblem
 from problems.k1 import *
 from problems.peaks import Peaks
+from problems.peaks3 import Peaks3

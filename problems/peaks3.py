@@ -1,7 +1,7 @@
 import numpy as np
 from .problem import RiskyProblem
 
-class Peaks(RiskyProblem):
+class Peaks3(RiskyProblem):
 
     def __init__(self, sigma=.5, repeat_eval=10):
         

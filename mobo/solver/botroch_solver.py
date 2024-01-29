@@ -292,7 +292,7 @@ class MARSSolver(NSGA2Solver):
                 else:
                     raise e 
         
-        selection = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
+        selection = {'x': np.array(X_cand.detach().cpu()), 'y': np.array(Y_cand_pred.detach().cpu())}
         
         # self.solution = {'x': np.array(X), 'y': np.array(Y)}
         return selection
