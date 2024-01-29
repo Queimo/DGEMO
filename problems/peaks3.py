@@ -26,7 +26,8 @@ class Peaks(RiskyProblem):
 
     
     def _evaluate_rho(self, x):
-        train_rho = self.evaluate_repeat(x).std(axis=-1)
+        train_obj = self.evaluate_repeat(x)
+        train_rho = train_obj.std(axis=-1)
         if np.isnan(train_rho).any():
             print("nan in rho")
             train_rho = np.zeros_like(train_rho)
