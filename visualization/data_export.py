@@ -758,8 +758,8 @@ class DataExport:
                             colorscale="Viridis",
                             showscale=False,
                             visible=(iteration == 1),
-                            zmin=min(approx_all_df[f"F_{i}"]),
-                            zmax=max(approx_all_df[f"F_{i}"])
+                            zmin=min(approx_all_i[f"F_{i}"]),
+                            zmax=max(approx_all_i[f"F_{i}"])
                         ),
                         row=i,
                         col=1,
@@ -775,8 +775,8 @@ class DataExport:
                             colorscale="Viridis",
                             showscale=False,
                             visible=(iteration == 1),
-                            zmin=min(approx_all_df[f"S_{i}"]),
-                            zmax=max(approx_all_df[f"S_{i}"])
+                            zmin=min(approx_all_i[f"S_{i}"]),
+                            zmax=max(approx_all_i[f"S_{i}"])
                         ),
                         row=i,
                         col=2,
@@ -792,8 +792,8 @@ class DataExport:
                                 colorscale="Viridis",
                                 showscale=False,
                                 visible=(iteration == 1),
-                                zmin=min(approx_all_df[f"rho_F_{i}"]),
-                                zmax=np.percentile(approx_all_df[f"rho_F_{i}"], 90)
+                                zmin=min(approx_all_i[f"rho_F_{i}"]),
+                                zmax=np.percentile(approx_all_i[f"rho_F_{i}"], 90)
                             ),
                             row=i,
                             col=3,

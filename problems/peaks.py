@@ -100,6 +100,21 @@ class Peaks(RiskyProblem):
         
         return np.stack([rho1, rho2], axis=-1)
 
+# class K2(K1):
+#     def __init__(self, sigma=0.2, repeat_eval=3):
+#         super().__init__(
+#             sigma=sigma,
+#             repeat_eval=repeat_eval
+#         )
+        
+class PeaksS5R3(Peaks):
+    def __init__(self):
+        super().__init__(
+            sigma=0.5,
+            repeat_eval=3
+        )
+
+
 
 if __name__ == "__main__":
     
