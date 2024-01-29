@@ -34,7 +34,8 @@ def get_acquisition(name):
 
 def get_solver(name):
     from .solver import NSGA2Solver, MOEADSolver, ParetoDiscoverySolver, \
-    ParEGOSolver, PSLSolver, qNEHVISolver, qEHVISolver, RAqNEHVISolver, RAPSLSolver, MARSSolver
+    ParEGOSolver, PSLSolver, qNEHVISolver, qEHVISolver, RAqNEHVISolver, \
+    RAPSLSolver, MARSSolver
 
     solver = {
         'nsga2': NSGA2Solver,

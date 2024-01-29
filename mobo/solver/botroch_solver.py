@@ -16,10 +16,12 @@ from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 from botorch.utils.multi_objective.box_decompositions.non_dominated import (
     FastNondominatedPartitioning,
 )
+from botorch.utils.multi_objective.hypervolume import infer_reference_point
 
 from botorch.acquisition.multi_objective.objective import MCMultiOutputObjective
 
 import os
+
 
 tkwargs = {
     "dtype": torch.double,
@@ -31,6 +33,7 @@ import warnings
 from botorch.exceptions import BadInitialCandidatesWarning
 from botorch.sampling.normal import SobolQMCNormalSampler
 
+from mobo.solver.mvar_edit import MVaR
 
 from botorch.utils.transforms import (
     concatenate_pending_points,
@@ -52,7 +55,6 @@ class qLogNEHVI(qNoisyExpectedHypervolumeImprovement):
     @t_batch_mode_transform()
     def forward(self, X): 
         X_full = torch.cat([match_batch_shape(self.X_baseline, X), X], dim=-2)
-        X_full_repeated = X_full.expand([-1, X_full.shape[-2]*10, -1])
         posterior = self.model.posterior(X_full, observation_noise=True)
         event_shape_lag = 1 if is_ensemble(self.model) else 2
         n_w = (
@@ -65,82 +67,142 @@ class qLogNEHVI(qNoisyExpectedHypervolumeImprovement):
         # Add previous nehvi from pending points.
         return self._compute_qehvi(samples=samples, X=X) + self._prev_nehvi
     
-class MeanVarianceObjective(MCMultiOutputObjective):
-    def __init__(self, beta):
-        super().__init__()
-        self.beta = beta
+def get_nehvi_ref_point(
+    model,
+    X_baseline,
+    objective,
+):
+    r"""Estimate the reference point for NEHVI using the model posterior on
+    `X_baseline` and the `infer_reference_point` objective. This applies the
+    feasibility weighted objective to the posterior mean, then uses the
+    heuristic.
 
-    def forward(self, samples, X=None, n_w=11):
-        mean = samples.mean(dim=0)
-        std = samples.std(dim=0)
-        return samples.view(samples.shape[0], 11, X.shape[0], -1).mean(dim=-3, keepdim=True)
-        return mean - self.beta * std
+    Args:
+        model: A fitted multi-output GPyTorchModel.
+        X_baseline: An `r x d`-dim tensor of points already observed.
+        objective: The feasibility weighted MC objective.
 
-beta = 0.5  # Adjust this based on your risk preference
-objective = MeanVarianceObjective(beta)
+    Returns:
+        A `num_objectives`-dim tensor representing the reference point.
+    """
+    with torch.no_grad():
+        post_mean = model.posterior(X_baseline).mean
+    if objective is not None:
+        obj = objective(post_mean)
+    else:
+        obj = post_mean
+    return infer_reference_point(obj)
+
+def get_nehvi(
+    model,
+    X_baseline,
+    sampler,
+    ref_point,
+    ref_aware: bool = False,
+    objective = None,
+):
+    r"""Construct the NEHVI acquisition function.
+
+    Args:
+        model: A fitted multi-output GPyTorchModel.
+        X_baseline: An `r x d`-dim tensor of points already observed.
+        sampler: The sampler used to draw the base samples.
+        num_constraints: The number of constraints. Constraints are handled by
+            weighting the samples according to a sigmoid approximation of feasibility.
+            If objective is given, it is applied after weighting.
+        use_rff: If True, replace the model with a single RFF sample. NEHVI-1.
+        ref_point: The reference point.
+        ref_aware: If True, use the given ref point. Otherwise, approximate it.
+        num_rff_features: The number of RFF features.
+        objective: This is the optional objective for optimizing independent
+            risk measures, such as expectation.
+
+    Returns:
+        The qNEHVI acquisition function.
+    """
+    if ref_point is None or not ref_aware:
+        ref_point = get_nehvi_ref_point(
+            model=model, X_baseline=X_baseline, objective=objective
+        )
+    return qLogNEHVI(
+        model=model,
+        ref_point=ref_point,
+        X_baseline=X_baseline,
+        sampler=sampler,
+        objective=objective,
+        prune_baseline=True,
+    )
+
+    
 
 class RAqNEHVISolver(NSGA2Solver):
     '''
     Solver based on PSL
     '''
     def __init__(self, *args, **kwargs):
+        
+        self.alpha = kwargs['alpha']
+        print("alpha", self.alpha)
+        
         super().__init__(*args, **kwargs)
         
 
-    # def solve(self, problem, X, Y, rho):
-    #     standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
-    #     standard_bounds[1] = 1
-    #     surrogate_model = problem.surrogate_model
+    def solve(self, problem, X, Y, rho):
+        standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
+        standard_bounds[1] = 1
+        surrogate_model = problem.surrogate_model
         
-    #     ref_point = self.ref_point
-    #     print("ref_point", ref_point)
+        ref_point = self.ref_point
+        print("ref_point", ref_point)
         
-    #     # use nsga2 to find pareto front for later plots, has limitations
-    #     self.solution = super().solve(problem, X, Y) 
+        # use nsga2 to find pareto front for later plots, has limitations
+        self.solution = super().solve(problem, X, Y) 
         
-    #     sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
-    #     # solve surrogate problem
-    #     # define acquisition functions
+        sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
         
-    #     acq_func = qLogNoisyExpectedHypervolumeImprovement(
-    #         model=surrogate_model.bo_model,
-    #         ref_point=ref_point,  # use known reference point
-    #         X_baseline=torch.from_numpy(X).to(**tkwargs),
-    #         prune_baseline=True,  # prune baseline points that have estimated zero probability of being Pareto optimal
-    #         sampler=sampler,
-    #     )
+        objective = MVaR(n_w=11, alpha=self.alpha)
         
-    #     options = {"batch_limit": self.batch_size, "maxiter": 2000}
+        acq_func = get_nehvi(
+            objective=objective,
+            model=surrogate_model.bo_model,
+            X_baseline=torch.from_numpy(X).to(**tkwargs),
+            sampler=sampler,
+            ref_point=torch.tensor(ref_point),
+        )
         
-    #     while options["batch_limit"] >= 1:
-    #         try:
-    #             torch.cuda.empty_cache()
-    #             X_cand, Y_cand_pred = optimize_acqf(
-    #                 acq_function=acq_func,
-    #                 bounds=standard_bounds,
-    #                 q=self.batch_size,
-    #                 num_restarts=NUM_RESTARTS,
-    #                 raw_samples=RAW_SAMPLES,  # used for intialization heuristic
-    #                 options=options,
-    #                 sequential=True,
-    #             )
-    #             torch.cuda.empty_cache()
-    #             break
-    #         except RuntimeError as e:
-    #             if options["batch_limit"] > 1:
-    #                 print(
-    #                     "Got a RuntimeError in `optimize_acqf`. "
-    #                     "Trying with reduced `batch_limit`."
-    #                 )
-    #                 options["batch_limit"] //= 2
-    #                 continue
-    #             else:
-    #                 raise e 
+        options = {"batch_limit": self.batch_size, "maxiter": 2000}
         
-    #     selection = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
+        while options["batch_limit"] >= 1:
+            try:
+                torch.cuda.empty_cache()
+                X_cand, Y_cand_pred = optimize_acqf(
+                    acq_function=acq_func,
+                    bounds=standard_bounds,
+                    q=self.batch_size,
+                    num_restarts=NUM_RESTARTS,
+                    raw_samples=RAW_SAMPLES,  # used for intialization heuristic
+                    options=options,
+                    sequential=True,
+                )
+                torch.cuda.empty_cache()
+                break
+            except RuntimeError as e:
+                if options["batch_limit"] > 1:
+                    print(
+                        "Got a RuntimeError in `optimize_acqf`. "
+                        "Trying with reduced `batch_limit`."
+                    )
+                    options["batch_limit"] //= 2
+                    continue
+                else:
+                    raise e 
         
-    #     return selection
-
+        selection = {'x': np.array(X_cand.detach().cpu()), 'y': np.array(Y_cand_pred.detach().cpu())}
+        
+        # self.solution = {'x': np.array(X), 'y': np.array(Y)}
+        return selection
+    
+    
 from botorch.acquisition.multi_objective.multi_output_risk_measures import MARS
 from botorch.acquisition.monte_carlo import qNoisyExpectedImprovement
 from botorch.utils.sampling import sample_simplex
@@ -296,6 +358,8 @@ class MARSSolver(NSGA2Solver):
         
         # self.solution = {'x': np.array(X), 'y': np.array(Y)}
         return selection
+    
+    
 class qNEHVISolver(NSGA2Solver):
     '''
     Solver based on PSL

@@ -6,3 +6,4 @@ from .parego import ParEGOSolver
 from .psl import PSLSolver
 from .ra_psl import RAPSLSolver
 from .botroch_solver import qNEHVISolver, qEHVISolver, RAqNEHVISolver, MARSSolver
+from .mvar_edit import MVaR

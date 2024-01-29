@@ -125,6 +125,14 @@ class MARS(MOBO):
         "selection": "identity",
     }
 
+class RAqNEHVI(MOBO):
+    config = {
+        "surrogate": "botorchgprepeat",
+        "acquisition": "identity",
+        "solver": "raqnehvi",
+        "selection": "identity",
+    }
+
 class qEHVI(MOBO):
     config = {
         "surrogate": "botorchgp",
@@ -151,5 +159,6 @@ def get_algorithm(name):
         "qnehvi": qNEHVI,
         "qehvi": qEHVI,
         "mars": MARS,
+        "raqnehvi": RAqNEHVI,
     }
     return algo[name]
