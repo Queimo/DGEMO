@@ -38,7 +38,8 @@ def get_problem_options():
         ('k9', K9),
         ('peaks', Peaks),
         ('peaks3', Peaks3),
-        ('peaksS5R3', PeaksS5R3)
+        ('peaksS5R3', PeaksS5R3),
+        ('exp', Experiment)
     ]
     return problems
 
@@ -76,6 +77,8 @@ def generate_initial_samples(problem, n_sample):
     
     indices = np.random.permutation(np.arange(len(X_feasible)))[:n_sample]
     X, Y, rho = X_feasible[indices], Y_feasible[indices], rho_feasible[indices] if rho_feasible is not None else None
+    
+    
     return X, Y, rho
 
 
@@ -110,8 +113,9 @@ def build_problem(name, n_var, n_obj, n_init_sample, n_process=1):
     else:
         try:
             problem = get_problem(name)
-        except:
-            raise NotImplementedError('problem not supported yet!')
+        except Exception as e:
+            print(e)
+            raise NotImplementedError('problem not supported yet or error!')
         try:
             pareto_front = problem.pareto_front()
         except Exception as e:
@@ -121,5 +125,9 @@ def build_problem(name, n_var, n_obj, n_init_sample, n_process=1):
 
     # get initial samples
     X_init, Y_init, rho_init = generate_initial_samples(problem, n_init_sample)
+    if name == 'exp':
+        X_init = problem.X
+        Y_init = problem.Y
+        rho_init = problem.rho
     
     return problem, pareto_front, X_init, Y_init, rho_init

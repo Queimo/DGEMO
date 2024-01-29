@@ -8,3 +8,4 @@ from problems.mixing import MixingProblem
 from problems.k1 import *
 from problems.peaks import Peaks, PeaksS5R3
 from problems.peaks3 import Peaks3
+from problems.exp import Experiment

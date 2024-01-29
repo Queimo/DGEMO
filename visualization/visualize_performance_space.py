@@ -328,7 +328,9 @@ def main():
                     fig[kk].add_trace(scatter(**trace_dict))
 
             # Adding true Pareto front points
-            for df_truefront in df_truefront_list:
+            
+            
+            for idx_t, df_truefront in enumerate(df_truefront_list):
                 if has_true_front:
                     trace_dict = dict(
                         name="True Pareto Front",
@@ -336,8 +338,10 @@ def main():
                         mode="markers",
                         x=df_truefront["f1"],
                         y=df_truefront["f2"],
+                        hovertext=f'True Pareto Front {idx_t}',
                         marker=dict(
-                            size=2,
+                            color=defaultColors[5+idx_t],
+                            size=3,
                             symbol="circle",
                         ),
                     )
