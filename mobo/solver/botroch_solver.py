@@ -11,17 +11,18 @@ from botorch.acquisition.multi_objective.monte_carlo import (
     qNoisyExpectedHypervolumeImprovement,
 )
 
-from botorch.acquisition.multi_objective.logei import qLogExpectedHypervolumeImprovement, qLogNoisyExpectedHypervolumeImprovement
-from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
+from botorch.acquisition.multi_objective.logei import (
+    qLogExpectedHypervolumeImprovement,
+    qLogNoisyExpectedHypervolumeImprovement,
+)
 from botorch.utils.multi_objective.box_decompositions.non_dominated import (
     FastNondominatedPartitioning,
 )
 from botorch.utils.multi_objective.hypervolume import infer_reference_point
 
-from botorch.acquisition.multi_objective.objective import MCMultiOutputObjective
 
 import os
-
+import gc
 
 tkwargs = {
     "dtype": torch.double,
@@ -40,8 +41,9 @@ from botorch.utils.transforms import (
     is_ensemble,
     match_batch_shape,
     t_batch_mode_transform,
-    standardize
+    standardize,
 )
+
 warnings.filterwarnings("ignore", category=BadInitialCandidatesWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -49,11 +51,11 @@ NUM_RESTARTS = 10 if not SMOKE_TEST else 2
 RAW_SAMPLES = 512 if not SMOKE_TEST else 4
 MC_SAMPLES = 128 if not SMOKE_TEST else 16
 
+
 class qLogNEHVI(qNoisyExpectedHypervolumeImprovement):
-    
     @concatenate_pending_points
     @t_batch_mode_transform()
-    def forward(self, X): 
+    def forward(self, X):
         X_full = torch.cat([match_batch_shape(self.X_baseline, X), X], dim=-2)
         posterior = self.model.posterior(X_full, observation_noise=True)
         event_shape_lag = 1 if is_ensemble(self.model) else 2
@@ -66,7 +68,8 @@ class qLogNEHVI(qNoisyExpectedHypervolumeImprovement):
         samples = self._get_f_X_samples(posterior=posterior, q_in=q_in)
         # Add previous nehvi from pending points.
         return self._compute_qehvi(samples=samples, X=X) + self._prev_nehvi
-    
+
+
 def get_nehvi_ref_point(
     model,
     X_baseline,
@@ -93,13 +96,14 @@ def get_nehvi_ref_point(
         obj = post_mean
     return infer_reference_point(obj)
 
+
 def get_nehvi(
     model,
     X_baseline,
     sampler,
     ref_point,
     ref_aware: bool = False,
-    objective = None,
+    objective=None,
 ):
     r"""Construct the NEHVI acquisition function.
 
@@ -133,35 +137,33 @@ def get_nehvi(
         prune_baseline=True,
     )
 
-    
 
 class RAqNEHVISolver(NSGA2Solver):
-    '''
+    """
     Solver based on PSL
-    '''
+    """
+
     def __init__(self, *args, **kwargs):
-        
-        self.alpha = kwargs['alpha']
+        self.alpha = kwargs["alpha"]
         print("alpha", self.alpha)
-        
+
         super().__init__(*args, **kwargs)
-        
 
     def solve(self, problem, X, Y, rho):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         surrogate_model = problem.surrogate_model
-        
+
         ref_point = self.ref_point
         print("ref_point", ref_point)
-        
+
         # use nsga2 to find pareto front for later plots, has limitations
-        self.solution = super().solve(problem, X, Y) 
-        
+        self.solution = super().solve(problem, X, Y)
+
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
-        
+
         objective = MVaR(n_w=11, alpha=self.alpha)
-        
+
         acq_func = get_nehvi(
             objective=objective,
             model=surrogate_model.bo_model,
@@ -169,9 +171,9 @@ class RAqNEHVISolver(NSGA2Solver):
             sampler=sampler,
             ref_point=torch.tensor(ref_point),
         )
-        
+
         options = {"batch_limit": self.batch_size, "maxiter": 2000}
-        
+
         while options["batch_limit"] >= 1:
             try:
                 torch.cuda.empty_cache()
@@ -195,21 +197,23 @@ class RAqNEHVISolver(NSGA2Solver):
                     options["batch_limit"] //= 2
                     continue
                 else:
-                    raise e 
-        
-        selection = {'x': np.array(X_cand.detach().cpu()), 'y': np.array(Y_cand_pred.detach().cpu())}
-        
+                    raise e
+
+        selection = {
+            "x": np.array(X_cand.detach().cpu()),
+            "y": np.array(Y_cand_pred.detach().cpu()),
+        }
+
         # self.solution = {'x': np.array(X), 'y': np.array(Y)}
         return selection
-    
-    
+
+
 from botorch.acquisition.multi_objective.multi_output_risk_measures import MARS
 from botorch.acquisition.monte_carlo import qNoisyExpectedImprovement
 from botorch.utils.sampling import sample_simplex
 
-class qNEI(
-    qNoisyExpectedImprovement
-):
+
+class qNEI(qNoisyExpectedImprovement):
     def _get_samples_and_objectives(self, X):
         r"""Compute samples at new points, using the cached root decomposition.
 
@@ -245,8 +249,8 @@ class qNEI(
             samples = self._get_f_X_samples(posterior=posterior, q_in=q_in)
             obj = self.objective(samples, X=X_full[..., -q:, :])
 
-
         return samples, obj
+
 
 def get_MARS_NEI(
     model,
@@ -292,43 +296,45 @@ def get_MARS_NEI(
     )
     return acq_func
 
+
 class MARSSolver(NSGA2Solver):
-    '''
+    """
     Solver based on PSL
-    '''
+    """
+
     def __init__(self, *args, **kwargs):
-        
-        self.alpha = kwargs['alpha']
+        self.alpha = kwargs["alpha"]
         print("alpha", self.alpha)
-        
+
         super().__init__(*args, **kwargs)
-        
 
     def solve(self, problem, X, Y, rho):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         surrogate_model = problem.surrogate_model
-        
-        ref_point = self.ref_point
+
+        ref_point = torch.tensor(self.ref_point)
         print("ref_point", ref_point)
-        
-        # use nsga2 to find pareto front for later plots, has limitations
-        self.solution = super().solve(problem, X, Y) 
-        
+
+        mvar_obj = MVaR(n_w=11, alpha=self.alpha)
+        ref_point = get_nehvi_ref_point(
+            model=surrogate_model.bo_model, X_baseline=torch.from_numpy(X).to(**tkwargs), objective=mvar_obj
+        )
+        print("mvar_ref_point", ref_point)
+
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
-        
-        
+
         acq_func = get_MARS_NEI(
             model=surrogate_model.bo_model,
             n_w=11,
             X_baseline=torch.from_numpy(X).to(**tkwargs),
             sampler=sampler,
-            mvar_ref_point=torch.tensor(ref_point),
+            mvar_ref_point=ref_point,
             alpha=self.alpha,
         )
-        
+
         options = {"batch_limit": self.batch_size, "maxiter": 2000}
-        
+
         while options["batch_limit"] >= 1:
             try:
                 torch.cuda.empty_cache()
@@ -342,6 +348,7 @@ class MARSSolver(NSGA2Solver):
                     sequential=True,
                 )
                 torch.cuda.empty_cache()
+                gc.collect()
                 break
             except RuntimeError as e:
                 if options["batch_limit"] > 1:
@@ -352,48 +359,52 @@ class MARSSolver(NSGA2Solver):
                     options["batch_limit"] //= 2
                     continue
                 else:
-                    raise e 
-        
-        selection = {'x': np.array(X_cand.detach().cpu()), 'y': np.array(Y_cand_pred.detach().cpu())}
-        
+                    raise e
+
+        selection = {
+            "x": np.array(X_cand.detach().cpu()),
+            "y": np.array(Y_cand_pred.detach().cpu()),
+        }
+
+        # use nsga2 to find pareto front for later plots, has limitations
+        self.solution = super().solve(problem, X, Y)
         # self.solution = {'x': np.array(X), 'y': np.array(Y)}
         return selection
-    
-    
+
+
 class qNEHVISolver(NSGA2Solver):
-    '''
+    """
     Solver based on PSL
-    '''
+    """
+
     def __init__(self, *args, **kwargs):
-        
         super().__init__(*args, **kwargs)
-        
 
     def solve(self, problem, X, Y, rho):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         surrogate_model = problem.surrogate_model
-        
+
         ref_point = self.ref_point
         print("ref_point", ref_point)
-        
+
         # use nsga2 to find pareto front for later plots, has limitations
-        self.solution = super().solve(problem, X, Y) 
-        
+        self.solution = super().solve(problem, X, Y)
+
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
         # solve surrogate problem
         # define acquisition functions
         acq_func = qLogNoisyExpectedHypervolumeImprovement(
-        # acq_func = qLogNEHVI(
+            # acq_func = qLogNEHVI(
             model=surrogate_model.bo_model,
             ref_point=ref_point,  # use known reference point
             X_baseline=torch.from_numpy(X).to(**tkwargs),
             prune_baseline=True,  # prune baseline points that have estimated zero probability of being Pareto optimal
             sampler=sampler,
         )
-        
+
         options = {"batch_limit": self.batch_size, "maxiter": 2000}
-        
+
         while options["batch_limit"] >= 1:
             try:
                 torch.cuda.empty_cache()
@@ -417,42 +428,41 @@ class qNEHVISolver(NSGA2Solver):
                     options["batch_limit"] //= 2
                     continue
                 else:
-                    raise e 
-        
-        selection = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
-        
+                    raise e
+
+        selection = {"x": np.array(X_cand), "y": np.array(Y_cand_pred)}
+
         # self.solution = {'x': np.array(X), 'y': np.array(Y)}
         return selection
 
 
 class qEHVISolver(NSGA2Solver):
-    '''
+    """
     Solver based on PSL
-    '''
+    """
+
     def __init__(self, *args, **kwargs):
-        
         super().__init__(*args, **kwargs)
-        
 
     def solve(self, problem, X, Y, rho):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         surrogate_model = problem.surrogate_model
-        
+
         ref_point = self.ref_point
         print("ref_point", ref_point)
-        
+
         # use nsga2 to find pareto front for later plots, has limitations
         self.solution = super().solve(problem, X, Y)
-        
+
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
         # solve surrogate problem
         # define acquisition functions
-               
+
         with torch.no_grad():
             pred = problem.evaluate(X)
         pred = torch.tensor(pred).to(**tkwargs)
-        
+
         partitioning = FastNondominatedPartitioning(
             ref_point=torch.tensor(ref_point).to(**tkwargs),
             Y=pred,
@@ -462,10 +472,9 @@ class qEHVISolver(NSGA2Solver):
             model=surrogate_model.bo_model,
             partitioning=partitioning,
             sampler=sampler,
-            
         )
         options = {"batch_limit": self.batch_size, "maxiter": 2000}
-        
+
         while options["batch_limit"] >= 1:
             try:
                 torch.cuda.empty_cache()
@@ -489,8 +498,8 @@ class qEHVISolver(NSGA2Solver):
                     options["batch_limit"] //= 2
                     continue
                 else:
-                    raise e 
-        
-        selection = {'x': np.array(X_cand), 'y': np.array(Y_cand_pred)}
-        
+                    raise e
+
+        selection = {"x": np.array(X_cand), "y": np.array(Y_cand_pred)}
+
         return selection
