@@ -10,7 +10,7 @@ class Experiment(RiskyProblem):
         self.bounds = np.array([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 3
-        df = pd.read_excel("./problems/data/XRD+synthsis_data.xlsx")
+        df = pd.read_excel("./problems/data/XRD+synthsis_data_b1.xlsx")
         df = df[["id", "C_ZnCl", "C_NaOH/C_ZnCl", "Aspect Ratio", "Peak Ratio"]]
         df_mean = df.select_dtypes(include=['float64', 'int64']).groupby("id").mean()
         df_std = df.select_dtypes(include=['float64', 'int64']).groupby("id").std()
