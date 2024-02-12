@@ -124,10 +124,11 @@ def build_problem(name, n_var, n_obj, n_init_sample, n_process=1):
             pareto_front = None
 
     # get initial samples
-    X_init, Y_init, rho_init = generate_initial_samples(problem, n_init_sample)
     if name == 'exp':
-        X_init = problem.X
-        Y_init = problem.Y
-        rho_init = problem.rho
+        X_init = problem.X[:n_init_sample]
+        Y_init = problem.Y[:n_init_sample]
+        rho_init = problem.rho[:n_init_sample]
+    else:
+        X_init, Y_init, rho_init = generate_initial_samples(problem, n_init_sample)
     
     return problem, pareto_front, X_init, Y_init, rho_init

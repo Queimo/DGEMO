@@ -79,7 +79,7 @@ def main():
         n_grid = int(np.sqrt(approx_all_i.shape[0]))
 
         rows = 2
-        cols = 3
+        cols = 4
 
         fig = make_subplots(
             rows=rows, cols=cols, subplot_titles=("F_i", "S_i", "rho_F_i")
@@ -153,6 +153,23 @@ def main():
                         ),
                         row=i,
                         col=3,
+                    )
+
+                # add mvar_F_1 mvar_F_2
+                if hasattr(approx_all_i, f"mvar_F_{i}"):
+                    fig.add_trace(
+                        go.Contour(
+                            x=x[0],
+                            y=y[:, 0],
+                            z=approx_all_i[f"mvar_F_{i}"].values.reshape((n_grid, n_grid)),
+                            colorscale="Viridis",
+                            showscale=False,
+                            visible=(iteration == 1),
+                            zmin=min(approx_all_df[f"mvar_F_{i}"]),
+                            zmax=max(approx_all_df[f"mvar_F_{i}"])
+                        ),
+                        row=i,
+                        col=4,
                     )
 
             for i in range(1, cols + 1):

@@ -1,6 +1,6 @@
 from . import NSGA2Solver, Solver
 from pymoo.algorithms.nsga2 import NSGA2
-
+from abc import ABC, abstractmethod
 
 import numpy as np
 import torch
@@ -51,6 +51,27 @@ NUM_RESTARTS = 10 if not SMOKE_TEST else 2
 RAW_SAMPLES = 512 if not SMOKE_TEST else 4
 MC_SAMPLES = 128 if not SMOKE_TEST else 16
 
+class BoTorchSolver(NSGA2Solver):
+    """
+    Solver based on PSL
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    @abstractmethod
+    def bo_solve(self, problem, X, Y, rho):
+        pass
+    
+    def nsga2_solve(self, problem, X, Y):
+        return super().solve(problem, X, Y)
+    
+    def solve(self, problem, X, Y, rho):
+        #get pareto_front with NSGA because botorch is slow for large batches
+        self.solution = self.nsga2_solve(problem, X, Y)
+        return self.bo_solve(problem, X, Y, rho)
+        
+        
 
 class qLogNEHVI(qNoisyExpectedHypervolumeImprovement):
     @concatenate_pending_points
@@ -89,7 +110,7 @@ def get_nehvi_ref_point(
         A `num_objectives`-dim tensor representing the reference point.
     """
     with torch.no_grad():
-        post_mean = model.posterior(X_baseline).mean
+        post_mean = model.posterior(X_baseline, observation_noise=True).mean
     if objective is not None:
         obj = objective(post_mean)
     else:
@@ -138,7 +159,7 @@ def get_nehvi(
     )
 
 
-class RAqNEHVISolver(NSGA2Solver):
+class RAqNEHVISolver(BoTorchSolver):
     """
     Solver based on PSL
     """
@@ -149,16 +170,13 @@ class RAqNEHVISolver(NSGA2Solver):
 
         super().__init__(*args, **kwargs)
 
-    def solve(self, problem, X, Y, rho):
+    def bo_solve(self, problem, X, Y, rho):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         surrogate_model = problem.surrogate_model
 
         ref_point = self.ref_point
         print("ref_point", ref_point)
-
-        # use nsga2 to find pareto front for later plots, has limitations
-        self.solution = super().solve(problem, X, Y)
 
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
 
@@ -297,7 +315,7 @@ def get_MARS_NEI(
     return acq_func
 
 
-class MARSSolver(NSGA2Solver):
+class MARSSolver(BoTorchSolver):
     """
     Solver based on PSL
     """
@@ -308,7 +326,7 @@ class MARSSolver(NSGA2Solver):
 
         super().__init__(*args, **kwargs)
 
-    def solve(self, problem, X, Y, rho):
+    def bo_solve(self, problem, X, Y, rho):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         surrogate_model = problem.surrogate_model
@@ -366,13 +384,10 @@ class MARSSolver(NSGA2Solver):
             "y": np.array(Y_cand_pred.detach().cpu()),
         }
 
-        # use nsga2 to find pareto front for later plots, has limitations
-        self.solution = super().solve(problem, X, Y)
-        # self.solution = {'x': np.array(X), 'y': np.array(Y)}
         return selection
 
 
-class qNEHVISolver(NSGA2Solver):
+class qNEHVISolver(BoTorchSolver):
     """
     Solver based on PSL
     """
@@ -380,16 +395,13 @@ class qNEHVISolver(NSGA2Solver):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def solve(self, problem, X, Y, rho):
+    def bo_solve(self, problem, X, Y, rho):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         surrogate_model = problem.surrogate_model
 
         ref_point = self.ref_point
         print("ref_point", ref_point)
-
-        # use nsga2 to find pareto front for later plots, has limitations
-        self.solution = super().solve(problem, X, Y)
 
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
         # solve surrogate problem
@@ -436,7 +448,7 @@ class qNEHVISolver(NSGA2Solver):
         return selection
 
 
-class qEHVISolver(NSGA2Solver):
+class qEHVISolver(BoTorchSolver):
     """
     Solver based on PSL
     """
@@ -444,16 +456,13 @@ class qEHVISolver(NSGA2Solver):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def solve(self, problem, X, Y, rho):
+    def bo_solve(self, problem, X, Y, rho):
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         surrogate_model = problem.surrogate_model
 
         ref_point = self.ref_point
         print("ref_point", ref_point)
-
-        # use nsga2 to find pareto front for later plots, has limitations
-        self.solution = super().solve(problem, X, Y)
 
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
         # solve surrogate problem

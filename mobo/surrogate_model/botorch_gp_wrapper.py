@@ -71,7 +71,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         mll = ExactMarginalLogLikelihood(model.likelihood, model)
         return mll, model
 
-    def evaluate(self, X, std=False, noise=False, calc_gradient=False, calc_hessian=False,):
+    def evaluate(self, X, std=False, noise=False, calc_gradient=False, calc_hessian=False, calc_mvar=False):
         X = torch.tensor(X).to(**tkwargs)
 
         F, dF, hF = None, None, None  # mean
@@ -154,6 +154,7 @@ class BoTorchSurrogateModel(SurrogateModel):
             "drho_F": drho_F,
             "rho_S": rho_S,
             "drho_S": drho_S,
+            "mvar_F": np.zeros_like(F),
         }
          
         return out

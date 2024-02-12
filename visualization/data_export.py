@@ -189,7 +189,7 @@ class DataExport:
             x1_mesh, x2_mesh = np.meshgrid(x1, x2)
             x_mesh = np.vstack((x1_mesh.flatten(), x2_mesh.flatten())).T
     
-            val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True)
+            val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True, calc_mvar=True)
             
             
             #create dataframe from val dict. If field in val is 2d array, then create columns for each element in array
@@ -210,8 +210,14 @@ class DataExport:
             X_mesh, Y_mesh = self.transformation.undo(
                 x_mesh, val["F"]
             )
+            
+            _, mvar_F_mesh = self.transformation.undo(x_mesh, val["mvar_F"])
+            
             d4["F_1"] = Y_mesh[:, 0]
             d4["F_2"] = Y_mesh[:, 1]
+            
+            d4["mvar_F_1"] = mvar_F_mesh[:, 0]
+            d4["mvar_F_2"] = mvar_F_mesh[:, 1]
             
             d4["x1"] = X_mesh[:, 0]
             d4["x2"] = X_mesh[:, 1]

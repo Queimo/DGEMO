@@ -24,21 +24,38 @@ from botorch.acquisition.objective import ExpectationPosteriorTransform
 
 from mobo.surrogate_model.botorch_gp_wrapper import BoTorchSurrogateModel
 from mobo.utils import safe_divide
+from ..solver.mvar_edit import MVaR
 
 from linear_operator.settings import _fast_solves
 
+from botorch.posteriors import GPyTorchPosterior
+from scipy.stats import norm
+
+def calculate_mvar(posterior: GPyTorchPosterior, alpha: float):
+    # Assuming posterior is a GPyTorchPosterior object with mean and variance
+    mean = -posterior.mean.detach().cpu().numpy()
+    std_dev = posterior.variance.sqrt().detach().cpu().numpy()
+    
+    # Calculate the z-score for the given alpha level
+    z_score = norm.ppf(alpha)
+    
+    # Calculate mVaR for each variable
+    mvar = mean + z_score * std_dev
+    return mvar
+
 
 class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
-
     """
     Gaussian process
     """
 
     def __init__(self, n_var, n_obj, **kwargs):
         super().__init__(n_var, n_obj)
+        n_w = 11
         self.input_transform = InputPerturbation(
-            torch.zeros((11, self.n_var), **tkwargs)
+            torch.zeros((n_w, self.n_var), **tkwargs)
         )
+        self.mvar = MVaR(n_w=n_w, alpha=0.9)
 
     def evaluate(
         self,
@@ -47,6 +64,7 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
         noise=False,
         calc_gradient=False,
         calc_hessian=False,
+        calc_mvar=False,
     ):
         X = torch.tensor(X).to(**tkwargs)
 
@@ -55,12 +73,19 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
         rho_F, drho_F = None, None  # noise mean
         rho_S, drho_S = None, None  # noise std
 
-        post = self.bo_model.posterior(
-            X, posterior_transform=ExpectationPosteriorTransform(n_w=11)
-        )
-        # negative because botorch assumes maximization (undo previous negative)
-        F = -post.mean.squeeze(-1).detach().cpu().numpy()
-        S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
+        with torch.no_grad():
+            post = self.bo_model.posterior(
+                X, posterior_transform=ExpectationPosteriorTransform(n_w=11)
+            )
+            # negative because botorch assumes maximization (undo previous negative)
+            F = -post.mean.squeeze(-1).detach().cpu().numpy()
+            S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
+
+            if calculate_mvar:
+                mvar_post = self.bo_model.posterior(X, observation_noise=True,posterior_transform=ExpectationPosteriorTransform(n_w=11))
+            
+                alpha = 0.99
+                mvar_F = calculate_mvar(mvar_post, alpha)
 
         if noise:
             rho_post = self.bo_model.likelihood.noise_covar.noise_model.posterior(X)
@@ -147,6 +172,7 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
             "drho_F": drho_F,
             "rho_S": rho_S,
             "drho_S": drho_S,
+            "mvar_F": mvar_F,
         }
 
         return out

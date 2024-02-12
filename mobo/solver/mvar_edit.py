@@ -164,7 +164,7 @@ class MVaR(BoTorchMVaR):
         self,
         samples: Tensor,
         X: Optional[Tensor] = None,
-        use_cpu: bool = False,
+        use_cpu: bool = True,
     ) -> Tensor:
         r"""Calculate the MVaR corresponding to the given samples.
 
