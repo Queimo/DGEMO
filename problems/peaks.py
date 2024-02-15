@@ -3,7 +3,7 @@ from .problem import RiskyProblem
 
 class Peaks(RiskyProblem):
 
-    def __init__(self, sigma=3., repeat_eval=10):
+    def __init__(self, sigma=.5, repeat_eval=10):
         
         self.sigma = sigma
         self.repeat_eval = repeat_eval
@@ -26,7 +26,7 @@ class Peaks(RiskyProblem):
         return train_obj
     
     def _evaluate_rho(self, x):
-        train_rho = self.evaluate_repeat(x).std(axis=-1)
+        train_rho = self.evaluate_repeat(x).var(axis=-1)
         #check nan
         if np.isnan(train_rho).any():
             print("nan in rho")
@@ -113,6 +113,133 @@ class PeaksS5R3(Peaks):
             sigma=0.5,
             repeat_eval=3
         )
+
+class Peaks6D(RiskyProblem):
+
+    def __init__(self, sigma=0., repeat_eval=1):
+        
+        self.sigma = sigma
+        self.repeat_eval = repeat_eval
+        self.bounds = np.array([[0.0] * 6, [1.0] * 6])  # Adjusted for 6 dimensions
+        self.dim = 6  # Adjusted for 6 dimensions
+        self.num_objectives = 2
+        
+        super().__init__(
+            n_var=self.dim, 
+            n_obj=self.num_objectives, 
+            n_constr=0,
+            xl=self.bounds[0,:],
+            xu=self.bounds[1,:],
+        )
+    
+    # The _evaluate_F, _evaluate_rho, pareto_front, evaluate_repeat, and get_domain methods remain largely unchanged.
+    # Minor adjustments might be needed for handling 6-dimensional inputs in evaluate_repeat if the f function changes its input handling.
+
+    def _evaluate_F(self, x):
+        train_obj = self.evaluate_repeat(x)
+        # train_obj = np.quantile(train_obj, 0.01, axis=-1)
+        train_obj = train_obj.mean(axis=-1)
+        return train_obj
+    
+    def _evaluate_rho(self, x):
+        train_rho = self.evaluate_repeat(x).var(axis=-1)
+        #check nan
+        if np.isnan(train_rho).any():
+            print("nan in rho")
+            train_rho = np.zeros_like(train_rho)
+        return train_rho 
+    
+    
+    def pareto_front(self, n_pareto_points=500):
+        
+        from .common import generate_initial_samples, get_problem
+        from mobo.solver import NSGA2Solver
+        from arguments import get_solver_args
+         
+        prob = self.__class__(repeat_eval=100)
+        X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
+        
+        Y_l = self.evaluate_repeat(X_init).min(axis=-1)
+        Y_h = self.evaluate_repeat(X_init).max(axis=-1)
+        
+        #namespace to dict
+        solver_args = vars(get_solver_args())
+        
+        
+        solver = NSGA2Solver(**solver_args)
+
+        # find Pareto front
+        solution = solver.solve(prob, X_init, Y_init)
+        solution_l = solver.solve(prob, X_init, Y_l)
+        solution_h = solver.solve(prob, X_init, Y_h)
+        
+        Y_paretos = solution['y']
+        Y_paretos_l = solution_l['y']
+        Y_paretos_h = solution_h['y']
+        return [Y_paretos, Y_paretos_l, Y_paretos_h]
+    
+        from .common import generate_initial_samples
+        from mobo.utils import find_pareto_front
+         
+        prob = self.__class__(repeat_eval=50)
+        X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
+        
+        Y_l = np.quantile(self.evaluate_repeat(X_init), 0.9, axis=-1)
+        Y_h = np.quantile(self.evaluate_repeat(X_init), 0.1, axis=-1)
+        # Y_h = self.evaluate_repeat(X_init).max(axis=-1)
+        
+        Y_paretos = find_pareto_front(Y_init)
+        Y_paretos_l = find_pareto_front(Y_l)
+        Y_paretos_h = find_pareto_front(Y_h)
+        
+
+        return [Y_paretos, Y_paretos_l, Y_paretos_h]
+    
+    def evaluate_repeat(self, x: np.array) -> np.array:
+        y_true = self.f(x)
+        sigmas = self.get_noise_var(x)
+        y_true = np.stack([y_true] * self.repeat_eval, axis=-1)
+        y = y_true + np.expand_dims(sigmas, -1) * np.random.randn(*y_true.shape)
+        return y
+    def f(self, X):
+        # Adjusted for 6-dimensional inputs
+        y1 = self.brannin_function(X[:, :2])  # Use the first 2 dimensions for Brannin
+        y2 = self.styblinski_tang_function(X[:, 2:])  # Use the remaining dimensions for Styblinski-Tang
+        return np.stack([y1, y2], axis=-1)
+        
+    def styblinski_tang_function(self, X):
+        # Adjusted for handling multiple dimensions beyond the original two
+        X_scaled = 10 * X - 5
+        return 0.5 * np.sum(X_scaled**4 - 16 * X_scaled**2 + 5 * X_scaled, axis=1) / 250
+    
+    def brannin_function(self, X):
+        # Only uses the first two dimensions from the input
+        x1, x2 = X[:, 0], X[:, 1]
+        x1 = 15 * x1 - 5
+        x2 = 15 * x2
+        a = 1
+        b = 5.1 / (4 * np.pi**2)
+        c = 5 / np.pi
+        r = 6
+        s = 10
+        t = 1 / (8 * np.pi)
+        return a * ((x2 - b * x1**2 + c * x1 - r)**2 + s * (1 - t) * np.cos(x1) + s) / 300
+
+    def sigmoid(self, x):
+        """ Sigmoid function for scaling. """
+        return 1 / (1 + np.exp(-x))
+    
+    
+    def get_noise_var(self, X):
+        # Adjust noise variance calculation for 6 dimensions, if necessary
+        # Example using a simplified noise model based on first two dimensions
+        x1, x2 = X[:, 0], X[:, 1]
+        noise_factor = self.sigmoid(20 * (-x2 + 0.4))
+        rho = self.sigma * noise_factor
+        
+        # Apply the same noise factor to all outputs for simplicity
+        # This part can be customized based on the desired noise model for the 6D problem
+        return np.stack([rho, rho], axis=-1)  # Keep this aligned with the number of objectives
 
 
 

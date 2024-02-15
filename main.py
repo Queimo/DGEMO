@@ -9,6 +9,7 @@ from utils import save_args
 from ref_point import RefPoint
 import torch
 import gc
+from mobo.utils import calc_hypervolume
 
 import wandb
 
@@ -48,6 +49,8 @@ def run_experiment(args, framework_args):
     problem, true_pfront, X_init, Y_init, rho_init = build_problem(
         args.problem, args.n_var, args.n_obj, args.n_init_sample, args.n_process
     )
+    
+    
     args.n_var, args.n_obj = problem.n_var, problem.n_obj
 
     ref_point_handler = RefPoint(
@@ -56,6 +59,9 @@ def run_experiment(args, framework_args):
 
     args.ref_point = ref_point_handler.get_ref_point(is_botorch=False)
 
+    print(f'Hypervolume of true pareto front 1: {calc_hypervolume(true_pfront[0], args.ref_point)}')
+    print(f'Hypervolume of true pareto front 1: {calc_hypervolume(true_pfront[1], args.ref_point)}')
+    print(f'Hypervolume of true pareto front 2: {calc_hypervolume(true_pfront[2], args.ref_point)}')
     # initialize optimizer
     optimizer = get_algorithm(args.algo)(
         problem, args.n_iter, ref_point_handler, framework_args

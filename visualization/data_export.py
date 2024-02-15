@@ -183,45 +183,51 @@ class DataExport:
 
             d3["ParetoFamily"] = np.zeros(approx_front_samples)
             
-            n_grid = 25
-            x2 = np.linspace(0, 1, n_grid)
-            x1 = np.linspace(0, 1, n_grid)
-            x1_mesh, x2_mesh = np.meshgrid(x1, x2)
-            x_mesh = np.vstack((x1_mesh.flatten(), x2_mesh.flatten())).T
     
-            val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True, calc_mvar=True)
-            
             
             #create dataframe from val dict. If field in val is 2d array, then create columns for each element in array
             d4 = {}
-            for key in val:
-                if val[key] is None:
-                    continue
-                if val[key].ndim == 1:
-                    d4[key] = val[key]
-                else:
-                    for i in range(val[key].shape[1]):
-                        col_name = f"{key}_{i + 1}"
-                        d4[col_name] = val[key][:, i]
-            
-            # add iteration id and x1, x2 columns
-            d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
-            
-            X_mesh, Y_mesh = self.transformation.undo(
-                x_mesh, val["F"]
-            )
-            
-            _, mvar_F_mesh = self.transformation.undo(x_mesh, val["mvar_F"])
-            
-            d4["F_1"] = Y_mesh[:, 0]
-            d4["F_2"] = Y_mesh[:, 1]
-            
-            d4["mvar_F_1"] = mvar_F_mesh[:, 0]
-            d4["mvar_F_2"] = mvar_F_mesh[:, 1]
-            
-            d4["x1"] = X_mesh[:, 0]
-            d4["x2"] = X_mesh[:, 1]
-                        
+            if pset.shape[1] == 2:
+                try:
+                    n_grid = 25
+                    x2 = np.linspace(0, 1, n_grid)
+                    x1 = np.linspace(0, 1, n_grid)
+                    x1_mesh, x2_mesh = np.meshgrid(x1, x2)
+                    x_mesh = np.vstack((x1_mesh.flatten(), x2_mesh.flatten())).T
+                    val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True, calc_mvar=True)
+                    
+                    for key in val:
+                        if val[key] is None:
+                            continue
+                        if val[key].ndim == 1:
+                            d4[key] = val[key]
+                        else:
+                            for i in range(val[key].shape[1]):
+                                col_name = f"{key}_{i + 1}"
+                                d4[col_name] = val[key][:, i]
+                    
+                    # add iteration id and x1, x2 columns
+                    d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
+                    
+                    X_mesh, Y_mesh = self.transformation.undo(
+                        x_mesh, val["F"]
+                    )
+                    
+                    _, mvar_F_mesh = self.transformation.undo(x_mesh, val["mvar_F"])
+                    
+                    d4["F_1"] = Y_mesh[:, 0]
+                    d4["F_2"] = Y_mesh[:, 1]
+                    
+                    d4["mvar_F_1"] = mvar_F_mesh[:, 0]
+                    d4["mvar_F_2"] = mvar_F_mesh[:, 1]
+                    
+                    d4["x1"] = X_mesh[:, 0]
+                    d4["x2"] = X_mesh[:, 1]
+                except Exception as e:
+                    print("d4 not created")
+                    d4 = {}
+                    pass
+                                           
             df4 = pd.DataFrame(data=d4)
             
 
