@@ -31,27 +31,26 @@ from linear_operator.settings import _fast_solves
 
 from botorch.models.transforms.input import InputPerturbation
 from botorch.models.deterministic import DeterministicModel
+
+
 class DeterministicModel3(DeterministicModel):
-    
+
     def __init__(self, num_outputs, input_transform=None, **kwargs):
         super().__init__()
         self.input_transform = input_transform
-        
-    
+
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         y = X[:, 1].unsqueeze(-1)
         return y
-    
+
 
 model3 = DeterministicModel3(
     num_outputs=1,
-    input_transform=InputPerturbation(
-        torch.zeros((11, 2), **tkwargs)
-    ),
+    input_transform=InputPerturbation(torch.zeros((11, 2), **tkwargs)),
 )
 
-class BoTorchSurrogateModel(SurrogateModel):
 
+class BoTorchSurrogateModel(SurrogateModel):
     """
     Gaussian process
     """
@@ -79,7 +78,9 @@ class BoTorchSurrogateModel(SurrogateModel):
                 print("retrying fitting...")
         print("failed to fit, retrying with torch optim...")
         try:
-            mll, self.bo_model = self.initialize_model(X_torch.clone(), Y_torch.clone(), rho_torch.clone())
+            mll, self.bo_model = self.initialize_model(
+                X_torch.clone(), Y_torch.clone(), rho_torch.clone()
+            )
             fit_gpytorch_mll_torch(mll, step_limit=1000)
         except RuntimeError as e:
             print(e)
@@ -87,7 +88,7 @@ class BoTorchSurrogateModel(SurrogateModel):
 
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
-        train_y_mean = -train_y # negative because botorch assumes maximization
+        train_y_mean = -train_y  # negative because botorch assumes maximization
         # train_y_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
         train_y_var = train_rho + 1e-6
         model = HeteroskedasticSingleTaskGP(
@@ -98,17 +99,24 @@ class BoTorchSurrogateModel(SurrogateModel):
             outcome_transform=Standardize(m=self.n_obj),
         )
         mll = ExactMarginalLogLikelihood(model.likelihood, model)
-        
-        
+
         return mll, model
 
-    def evaluate(self, X, std=False, noise=False, calc_gradient=False, calc_hessian=False, calc_mvar=False):
+    def evaluate(
+        self,
+        X,
+        std=False,
+        noise=False,
+        calc_gradient=False,
+        calc_hessian=False,
+        calc_mvar=False,
+    ):
         X = torch.tensor(X).to(**tkwargs)
 
         F, dF, hF = None, None, None  # mean
         S, dS, hS = None, None, None  # std
         rho_F, drho_F = None, None  # noise mean
-        rho_S, drho_S = None, None  # noise std 
+        rho_S, drho_S = None, None  # noise std
 
         post = self.bo_model.posterior(X)
         # negative because botorch assumes maximization (undo previous negative)
@@ -121,24 +129,32 @@ class BoTorchSurrogateModel(SurrogateModel):
             rho_S = rho_post.variance.sqrt().detach().cpu().numpy()
             if calc_gradient:
                 jac_rho = torch.autograd.functional.jacobian(
-                    lambda x: self.bo_model.likelihood.noise_covar.noise_model(x).mean.T, X
+                    lambda x: self.bo_model.likelihood.noise_covar.noise_model(
+                        x
+                    ).mean.T,
+                    X,
                 )
                 drho_F = (
                     jac_rho.diagonal(dim1=0, dim2=2)
                     .transpose(0, -1)
                     .transpose(1, 2)
-                    .detach().cpu()
+                    .detach()
+                    .cpu()
                     .numpy()
                 )
                 if std:
                     jac_rho = torch.autograd.functional.jacobian(
-                        lambda x: self.bo_model.likelihood.noise_covar.noise_model(x).variance.sqrt().T, X
+                        lambda x: self.bo_model.likelihood.noise_covar.noise_model(x)
+                        .variance.sqrt()
+                        .T,
+                        X,
                     )
                     drho_S = (
                         jac_rho.diagonal(dim1=0, dim2=2)
                         .transpose(0, -1)
                         .transpose(1, 2)
-                        .detach().cpu()
+                        .detach()
+                        .cpu()
                         .numpy()
                     )
 
@@ -158,7 +174,8 @@ class BoTorchSurrogateModel(SurrogateModel):
                 jac_F.diagonal(dim1=0, dim2=2)
                 .transpose(0, -1)
                 .transpose(1, 2)
-                .detach().cpu()
+                .detach()
+                .cpu()
                 .numpy()
             )
 
@@ -170,7 +187,8 @@ class BoTorchSurrogateModel(SurrogateModel):
                     jac_S.diagonal(dim1=0, dim2=2)
                     .transpose(0, -1)
                     .transpose(1, 2)
-                    .detach().cpu()
+                    .detach()
+                    .cpu()
                     .numpy()
                 )
 
@@ -187,5 +205,5 @@ class BoTorchSurrogateModel(SurrogateModel):
             "drho_S": drho_S,
             "mvar_F": np.zeros_like(F),
         }
-         
+
         return out

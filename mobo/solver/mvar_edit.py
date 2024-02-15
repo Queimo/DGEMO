@@ -24,6 +24,89 @@ from gpytorch import lazify
 from gpytorch.distributions import MultitaskMultivariateNormal
 from torch import Tensor
 
+from botorch.acquisition.multi_objective.multi_output_risk_measures import MARS
+from botorch.utils.sampling import sample_simplex
+from botorch.utils.multi_objective.hypervolume import infer_reference_point
+
+def get_nehvi_ref_point(
+    model,
+    X_baseline,
+    objective,
+    Y_samples=None,
+):
+    r"""Estimate the reference point for NEHVI using the model posterior on
+    `X_baseline` and the `infer_reference_point` objective. This applies the
+    feasibility weighted objective to the posterior mean, then uses the
+    heuristic.
+
+    Args:
+        model: A fitted multi-output GPyTorchModel.
+        X_baseline: An `r x d`-dim tensor of points already observed.
+        objective: The feasibility weighted MC objective.
+
+    Returns:
+        A `num_objectives`-dim tensor representing the reference point.
+    """
+    if Y_samples is not None:
+        Y = Y_samples
+    else:
+        with torch.no_grad():
+            post_mean = model.posterior(X_baseline, observation_noise=True).mean
+            # Cost model
+            # # repeat X_baseline 11 times
+            # X_b_reapeat = X_baseline.repeat(11, 1)
+            # det_func = lambda x: x[:, 1].unsqueeze(-1)
+            # y3 = det_func(X_b_reapeat)
+            # # join tensors [110,2] and [110,1]
+            # Y = torch.cat([post_mean, y3], dim=1)
+            Y = post_mean
+
+    if objective is not None:
+        obj = objective(Y)
+    else:
+        obj = Y
+    return infer_reference_point(obj)
+
+
+def get_MARS(
+    model,
+    n_w,
+    X_baseline,
+    sampler,
+    mvar_ref_point,
+    alpha,
+    Y_samples=None,
+):
+    r"""Construct the NEI acquisition function with VaR of Chebyshev scalarizations.
+    Args:
+        model: A fitted multi-output GPyTorchModel.
+        n_w: the number of perturbation samples
+        X_baseline: An `r x d`-dim tensor of points already observed.
+        sampler: The sampler used to draw the base samples.
+        mvar_ref_point: The mvar reference point.
+    Returns:
+        The NEI acquisition function.
+    """
+    # sample weights from the simplex
+    weights = sample_simplex(
+        d=mvar_ref_point.shape[0],
+        n=1,
+        dtype=X_baseline.dtype,
+        device=X_baseline.device,
+    ).squeeze(0)
+    # set up mars objective
+    mars = MARS(
+        alpha=alpha,
+        n_w=n_w,
+        chebyshev_weights=weights,
+        # ref_point=mvar_ref_point,
+    )
+    # set normalization bounds for the scalarization
+    mars.set_baseline_Y(model=model, X_baseline=X_baseline, Y_samples=Y_samples)
+    # initial qNEI acquisition function with the MARS objective
+    return mars
+
+
 
 class MultiOutputExpectation(MultiOutputRiskMeasureMCObjective):
     r"""A multi-output MC expectation risk measure."""

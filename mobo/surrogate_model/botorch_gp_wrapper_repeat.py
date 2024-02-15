@@ -31,14 +31,15 @@ from linear_operator.settings import _fast_solves
 from botorch.posteriors import GPyTorchPosterior
 from scipy.stats import norm
 
+
 def calculate_mvar(posterior: GPyTorchPosterior, alpha: float):
     # Assuming posterior is a GPyTorchPosterior object with mean and variance
     mean = -posterior.mean.detach().cpu().numpy()
     std_dev = posterior.variance.sqrt().detach().cpu().numpy()
-    
+
     # Calculate the z-score for the given alpha level
     z_score = norm.ppf(alpha)
-    
+
     # Calculate mVaR for each variable
     mvar = mean + z_score * std_dev
     return mvar
@@ -82,8 +83,12 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
             S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
             if calculate_mvar:
-                mvar_post = self.bo_model.posterior(X, observation_noise=True,posterior_transform=ExpectationPosteriorTransform(n_w=11))
-            
+                mvar_post = self.bo_model.posterior(
+                    X,
+                    observation_noise=True,
+                    posterior_transform=ExpectationPosteriorTransform(n_w=11),
+                )
+
                 alpha = 0.99
                 mvar_F = calculate_mvar(mvar_post, alpha)
 
