@@ -11,7 +11,11 @@ from botorch.models.gp_regression import (
     HeteroskedasticSingleTaskGP,
     SingleTaskGP,
 )
+
+from botorch.models.deterministic import GenericDeterministicModel
+
 from botorch.models.model_list_gp_regression import ModelListGP
+from botorch.models.model import ModelList
 from botorch.models.transforms.outcome import Standardize
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
 from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
@@ -24,6 +28,27 @@ from mobo.utils import safe_divide
 
 from linear_operator.settings import _fast_solves
 
+
+from botorch.models.transforms.input import InputPerturbation
+from botorch.models.deterministic import DeterministicModel
+class DeterministicModel3(DeterministicModel):
+    
+    def __init__(self, num_outputs, input_transform=None, **kwargs):
+        super().__init__()
+        self.input_transform = input_transform
+        
+    
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        y = X[:, 1].unsqueeze(-1)
+        return y
+    
+
+model3 = DeterministicModel3(
+    num_outputs=1,
+    input_transform=InputPerturbation(
+        torch.zeros((11, 2), **tkwargs)
+    ),
+)
 
 class BoTorchSurrogateModel(SurrogateModel):
 
@@ -52,13 +77,17 @@ class BoTorchSurrogateModel(SurrogateModel):
             except RuntimeError as e:
                 print(e)
                 print("retrying fitting...")
-        print("failed to fit")
-        mll, self.bo_model = self.initialize_model(X_torch.clone(), Y_torch.clone(), rho_torch.clone())
-        fit_gpytorch_mll_torch(mll, step_limit=1000)
+        print("failed to fit, retrying with torch optim...")
+        try:
+            mll, self.bo_model = self.initialize_model(X_torch.clone(), Y_torch.clone(), rho_torch.clone())
+            fit_gpytorch_mll_torch(mll, step_limit=1000)
+        except RuntimeError as e:
+            print(e)
+            print("failed to fit. Keeping the previous model.")
 
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
-        train_y_mean = -train_y  # negative because botorch assumes maximization
+        train_y_mean = -train_y # negative because botorch assumes maximization
         # train_y_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
         train_y_var = train_rho + 1e-6
         model = HeteroskedasticSingleTaskGP(
@@ -69,6 +98,8 @@ class BoTorchSurrogateModel(SurrogateModel):
             outcome_transform=Standardize(m=self.n_obj),
         )
         mll = ExactMarginalLogLikelihood(model.likelihood, model)
+        
+        
         return mll, model
 
     def evaluate(self, X, std=False, noise=False, calc_gradient=False, calc_hessian=False, calc_mvar=False):
