@@ -52,11 +52,12 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
 
     def __init__(self, n_var, n_obj, **kwargs):
         super().__init__(n_var, n_obj)
-        n_w = 11
+        n_w = kwargs["n_w"]
+        self.alpha = kwargs["alpha"]
         self.input_transform = InputPerturbation(
             torch.zeros((n_w, self.n_var), **tkwargs)
         )
-        self.mvar = MVaR(n_w=n_w, alpha=0.9)
+        self.mvar = MVaR(n_w=n_w, alpha=self.alpha)
 
     def evaluate(
         self,
@@ -88,9 +89,8 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
                     observation_noise=True,
                     posterior_transform=ExpectationPosteriorTransform(n_w=11),
                 )
-
-                alpha = 0.99
-                mvar_F = calculate_mvar(mvar_post, alpha)
+                
+                mvar_F = calculate_mvar(mvar_post, self.alpha)
 
         if noise:
             rho_post = self.bo_model.likelihood.noise_covar.noise_model.posterior(X)

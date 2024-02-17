@@ -8,6 +8,13 @@ Get argument values from command line
 Here we speficy different argument parsers to avoid argument conflict between initializing each components
 '''
 
+alpha = 0.9
+n_init_sample = 12
+n_iter = 10
+batch_size = 1
+n_w = 11
+ 
+
 def get_general_args(args=None):
     '''
     General arguments: problem and algorithm description, experiment settings
@@ -20,13 +27,13 @@ def get_general_args(args=None):
         help='number of design variables')
     parser.add_argument('--n-obj', type=int, default=2, 
         help='number of objectives')
-    parser.add_argument('--n-init-sample', type=int, default=12, 
+    parser.add_argument('--n-init-sample', type=int, default=n_init_sample, 
         help='number of initial design samples')
-    parser.add_argument('--n-iter', type=int, default=10, 
+    parser.add_argument('--n-iter', type=int, default=n_iter, 
         help='number of optimization iterations')
     parser.add_argument('--ref-point', type=float, nargs='+', default=None, 
         help='reference point for calculating hypervolume')
-    parser.add_argument('--batch-size', type=int, default=1, 
+    parser.add_argument('--batch-size', type=int, default=batch_size, 
         help='size of the selected batch in one iteration')
 
     parser.add_argument('--seed', type=int, default=0, 
@@ -66,6 +73,10 @@ def get_surroagte_args(args=None):
         help='parameter nu for matern kernel (integer, -1 means inf)')
     parser.add_argument('--mean-sample', default=False, action='store_true', 
         help='use mean sample when sampling objective functions')
+    parser.add_argument('--alpha', type=float, default=alpha,
+        help='VaR parameter')
+    parser.add_argument('--n-w', type=int, default=n_w,
+        help='number of samples for mVaR calculation')
 
     args, _ = parser.parse_known_args(args)
     return args
@@ -104,9 +115,11 @@ def get_solver_args(args=None):
         help='method to init population')
     parser.add_argument('--n-process', type=int, default=1,
         help='number of processes to be used for parallelization')
-    parser.add_argument('--alpha', type=float, default=0.9,
+    parser.add_argument('--alpha', type=float, default=alpha,
         help='VaR parameter')
-    parser.add_argument('--batch-size', type=int, default=1, 
+    parser.add_argument('--n-w', type=int, default=n_w,
+        help='number of samples for mVaR calculation')
+    parser.add_argument('--batch-size', type=int, default=batch_size,
         help='size of the selected batch in one iteration')
 
     # ParetoDiscovery solver
@@ -141,7 +154,7 @@ def get_selection_args(args=None):
 
     parser.add_argument('--selection', type=str, default='hvi', 
         help='type of selection method for new batch')
-    parser.add_argument('--batch-size', type=int, default=1, 
+    parser.add_argument('--batch-size', type=int, default=batch_size,
         help='size of the selected batch in one iteration')
 
     args, _ = parser.parse_known_args(args)

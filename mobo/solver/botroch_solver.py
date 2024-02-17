@@ -5,6 +5,7 @@ from abc import abstractmethod
 
 import numpy as np
 import torch
+import botorch
 
 from botorch.optim.optimize import optimize_acqf
 from botorch.acquisition.multi_objective.monte_carlo import (
@@ -30,6 +31,7 @@ from botorch.utils.transforms import (
 )
 from botorch.models.transforms.input import InputPerturbation
 from botorch.models.deterministic import DeterministicModel
+from botorch.models.model import ModelList
 import os
 import gc
 
@@ -50,6 +52,7 @@ class DeterministicModel3(DeterministicModel):
         self.input_transform = input_transform
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
+        # y = torch.min(X[..., 1],X[..., 0]).unsqueeze(-1)
         y = X[..., 1].unsqueeze(-1)
         return y
 
@@ -61,9 +64,6 @@ model3 = DeterministicModel3(
 
 
 class BoTorchSolver(NSGA2Solver):
-    """
-    Solver based on PSL
-    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -75,9 +75,8 @@ class BoTorchSolver(NSGA2Solver):
     def nsga2_solve(self, problem, X, Y):
         return super().solve(problem, X, Y)
 
-
     def optimize_acqf_loop(self, problem, acq_func):
-            
+
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
         options = {"batch_limit": self.batch_size, "maxiter": 2000}
@@ -114,7 +113,7 @@ class BoTorchSolver(NSGA2Solver):
         }
 
         return selection
-    
+
     def solve(self, problem, X, Y, rho):
         # get pareto_front with NSGA because botorch is slow for large batches
         self.solution = self.nsga2_solve(problem, X, Y)
@@ -122,6 +121,29 @@ class BoTorchSolver(NSGA2Solver):
 
 
 class qLogNEHVI(qNoisyExpectedHypervolumeImprovement):
+
+    def __init__(
+        self,
+        model,
+        ref_point,
+        X_baseline,
+        sampler,
+        objective,
+        prune_baseline,
+        det_model,
+    ):
+        super().__init__(
+            model=model,
+            ref_point=ref_point,
+            X_baseline=X_baseline,
+            sampler=sampler,
+            objective=objective,
+            prune_baseline=True,
+            cache_root=False,
+        )
+
+        self.det_model = det_model
+
     @concatenate_pending_points
     @t_batch_mode_transform()
     def forward(self, X):
@@ -135,77 +157,40 @@ class qLogNEHVI(qNoisyExpectedHypervolumeImprovement):
         q_in = X.shape[-2] * n_w
         self._set_sampler(q_in=q_in, posterior=posterior)
         samples = self._get_f_X_samples(posterior=posterior, q_in=q_in)
+
+        # y3 = self.det_model.posterior(X).mean
+        # y3_sa = y3.expand([MC_SAMPLES, -1, -1, -1])
+        # # concatenate the samples_full and y3
+        # samples= torch.cat([samples, y3_sa], dim=-1)
         # Add previous nehvi from pending points.
         return self._compute_qehvi(samples=samples, X=X) + self._prev_nehvi
 
 
-
-def get_nehvi(
-    model,
-    X_baseline,
-    sampler,
-    ref_point,
-    ref_aware: bool = False,
-    objective=None,
-):
-    r"""Construct the NEHVI acquisition function.
-
-    Args:
-        model: A fitted multi-output GPyTorchModel.
-        X_baseline: An `r x d`-dim tensor of points already observed.
-        sampler: The sampler used to draw the base samples.
-        num_constraints: The number of constraints. Constraints are handled by
-            weighting the samples according to a sigmoid approximation of feasibility.
-            If objective is given, it is applied after weighting.
-        use_rff: If True, replace the model with a single RFF sample. NEHVI-1.
-        ref_point: The reference point.
-        ref_aware: If True, use the given ref point. Otherwise, approximate it.
-        num_rff_features: The number of RFF features.
-        objective: This is the optional objective for optimizing independent
-            risk measures, such as expectation.
-
-    Returns:
-        The qNEHVI acquisition function.
-    """
-    if ref_point is None or not ref_aware:
-        ref_point = get_nehvi_ref_point(
-            model=model, X_baseline=X_baseline, objective=objective
-        )
-    return qLogNEHVI(
-        model=model,
-        ref_point=ref_point,
-        X_baseline=X_baseline,
-        sampler=sampler,
-        objective=objective,
-        prune_baseline=True,
-    )
-
-
 class RAqNEHVISolver(BoTorchSolver):
-    """
-    Solver based on PSL
-    """
 
     def __init__(self, *args, **kwargs):
         self.alpha = kwargs["alpha"]
+        self.n_w = kwargs["n_w"]
         print("alpha", self.alpha)
 
         super().__init__(*args, **kwargs)
 
     def bo_solve(self, problem, X, Y, rho):
         surrogate_model = problem.surrogate_model
-        
+
         model = surrogate_model.bo_model
-        X_baseline=torch.from_numpy(X).to(**tkwargs)
+        X_baseline = torch.from_numpy(X).to(**tkwargs)
 
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
 
-        objective = MVaR(n_w=11, alpha=self.alpha)
+        objective = MVaR(n_w=self.n_w, alpha=self.alpha)
+
+        # model = ModelList(model, model3)
 
         ref_point = get_nehvi_ref_point(
-                model=model, X_baseline=X_baseline, objective=objective
-            )
-        
+            model=model, X_baseline=X_baseline, objective=objective
+        )
+
         acq_func = qLogNEHVI(
             model=model,
             ref_point=ref_point,
@@ -213,9 +198,10 @@ class RAqNEHVISolver(BoTorchSolver):
             sampler=sampler,
             objective=objective,
             prune_baseline=True,
+            det_model=model3,
         )
-        
-        selection = self.optimize_acqf_loop(self, problem, acq_func)
+
+        selection = self.optimize_acqf_loop(problem, acq_func)
 
         return selection
 
@@ -240,7 +226,17 @@ class qNEI(qNoisyExpectedImprovement):
         )
 
         self.det_model = det_model
-        self.obj3 = objective
+        Y_12 = model.posterior(X_baseline, observation_noise=True).mean
+        Y_3 = det_model.posterior(X_baseline).mean
+        Y_samples = torch.cat([Y_12, Y_3], dim=1)
+        self.obj3 = get_MARS(
+            model=self.det_model,
+            n_obj=Y_samples.shape[-1],
+            n_w=objective.n_w,
+            X_baseline=X_baseline,
+            alpha=objective.alpha,
+            Y_samples=Y_samples,
+        )
 
     def _get_samples_and_objectives(self, X):
         r"""Compute samples at new points, using the cached root decomposition.
@@ -285,12 +281,10 @@ class qNEI(qNoisyExpectedImprovement):
 
 
 class MARSSolver(BoTorchSolver):
-    """
-    Solver based on PSL
-    """
 
     def __init__(self, *args, **kwargs):
         self.alpha = kwargs["alpha"]
+        self.n_w = kwargs["n_w"]
         print("alpha", self.alpha)
 
         super().__init__(*args, **kwargs)
@@ -301,13 +295,11 @@ class MARSSolver(BoTorchSolver):
         X_baseline = torch.from_numpy(X).to(**tkwargs)
         model = surrogate_model.bo_model
 
-        Y_12 = model.posterior(X_baseline, observation_noise=True).mean
-        Y_3 = model3.posterior(X_baseline).mean
-        Y_samples = torch.cat([Y_12, Y_3], dim=1)
-        Y_samples = model.posterior(X_baseline, observation_noise=False).mean
+        Y_samples = model.posterior(X_baseline, observation_noise=True).mean
         # Y_samples = None
 
-        mvar_obj = MVaR(n_w=11, alpha=self.alpha)
+        mvar_obj = MVaR(n_w=self.n_w, alpha=self.alpha)
+
         ref_point = get_nehvi_ref_point(
             model=model,
             X_baseline=torch.from_numpy(X).to(**tkwargs),
@@ -319,14 +311,13 @@ class MARSSolver(BoTorchSolver):
 
         mars = get_MARS(
             model=model,
-            n_w=11,
+            n_obj=Y_samples.shape[-1],
+            n_w=self.n_w,
             X_baseline=X_baseline,
-            sampler=sampler,
-            mvar_ref_point=ref_point,
             alpha=self.alpha,
             Y_samples=Y_samples,
         )
-        
+
         acq_func = qNEI(
             model=model,
             X_baseline=X_baseline,
@@ -335,15 +326,12 @@ class MARSSolver(BoTorchSolver):
             sampler=sampler,
             det_model=model3,
         )
-        
-        selection = self.optimize_acqf_loop(self, problem, acq_func)
+
+        selection = self.optimize_acqf_loop(problem, acq_func)
         return selection
 
 
 class qNEHVISolver(BoTorchSolver):
-    """
-    Solver based on PSL
-    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -365,16 +353,13 @@ class qNEHVISolver(BoTorchSolver):
             prune_baseline=True,  # prune baseline points that have estimated zero probability of being Pareto optimal
             sampler=sampler,
         )
-        
-        selection = self.optimize_acqf_loop(self, problem, acq_func)
+
+        selection = self.optimize_acqf_loop(problem, acq_func)
 
         return selection
 
 
 class qEHVISolver(BoTorchSolver):
-    """
-    Solver based on PSL
-    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -403,7 +388,7 @@ class qEHVISolver(BoTorchSolver):
             partitioning=partitioning,
             sampler=sampler,
         )
-        
-        selection = self.optimize_acqf_loop(self, problem, acq_func)
-        
+
+        selection = self.optimize_acqf_loop(problem, acq_func)
+
         return selection

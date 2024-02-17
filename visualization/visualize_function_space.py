@@ -82,7 +82,7 @@ def main():
         cols = 4
 
         fig = make_subplots(
-            rows=rows, cols=cols, subplot_titles=("F_i", "S_i", "rho_F_i")
+            rows=rows, cols=cols, subplot_titles=("F_i", "S_i", "rho_F_i", "mvar_F_i")
         )
 
         for iteration in range(1, max_iterations):

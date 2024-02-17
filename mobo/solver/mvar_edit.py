@@ -70,10 +70,9 @@ def get_nehvi_ref_point(
 
 def get_MARS(
     model,
+    n_obj,
     n_w,
     X_baseline,
-    sampler,
-    mvar_ref_point,
     alpha,
     Y_samples=None,
 ):
@@ -89,7 +88,7 @@ def get_MARS(
     """
     # sample weights from the simplex
     weights = sample_simplex(
-        d=mvar_ref_point.shape[0],
+        d=n_obj,
         n=1,
         dtype=X_baseline.dtype,
         device=X_baseline.device,
