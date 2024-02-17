@@ -77,8 +77,8 @@ class Experiment4D(RiskyProblem):
 
         self.sigma = np.nan
         #                       C_NaOH/C_ZnCl, C_ZnCl, Q_AC, Q_Air
-        self.bounds = np.array([[0.5, 0.0, 8.0, 1.0], 
-                                [3.5, 1.0, 20.0, 3.0]])
+        self.bounds = np.array([[0.5, 0.1, 8.0, 1.0], 
+                                [3.5, 1.0, 20.0, 2.5]])
         self.dim = 4
         self.num_objectives = 3
         df = pd.read_excel("./problems/data/XRD+synthsis_data_b3.xlsx")

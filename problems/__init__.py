@@ -6,6 +6,6 @@ from problems.vlmop import VLMOP2, VLMOP3
 from problems.re import RE1, RE2, RE3, RE4, RE5, RE6, RE7
 from problems.mixing import MixingProblem
 from problems.k1 import *
-from problems.peaks import Peaks, PeaksS5R3, Peaks6D
+from problems.peaks import Peaks, PeaksS5R3, Peaks4D
 from problems.peaks3 import Peaks3
 from problems.exp import Experiment, Experiment4D

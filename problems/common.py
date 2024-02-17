@@ -41,7 +41,7 @@ def get_problem_options():
         ('peaksS5R3', PeaksS5R3),
         ('exp', Experiment),
         ('exp4d', Experiment4D),
-        ('peaks6d', Peaks6D)
+        ('peaks4d', Peaks4D)
     ]
     return problems
 

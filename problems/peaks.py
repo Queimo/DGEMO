@@ -3,7 +3,7 @@ from .problem import RiskyProblem
 
 class Peaks(RiskyProblem):
 
-    def __init__(self, sigma=.5, repeat_eval=10):
+    def __init__(self, sigma=.0, repeat_eval=1):
         
         self.sigma = sigma
         self.repeat_eval = repeat_eval
@@ -26,32 +26,59 @@ class Peaks(RiskyProblem):
         return train_obj
     
     def _evaluate_rho(self, x):
-        train_rho = self.evaluate_repeat(x).var(axis=-1)
+        train_rho = self.evaluate_repeat(x).std(axis=-1)
         #check nan
         if np.isnan(train_rho).any():
             print("nan in rho")
             train_rho = np.zeros_like(train_rho)
         return train_rho 
     
-    
-    def pareto_front(self, n_pareto_points=1000):
+    def pareto_front(self, n_pareto_points=500):
         
-        from .common import generate_initial_samples
-        from mobo.utils import find_pareto_front
+        from .common import generate_initial_samples, get_problem
+        from mobo.solver import NSGA2Solver
+        from arguments import get_solver_args
          
-        prob = self.__class__(repeat_eval=50)
+        prob = self.__class__(repeat_eval=100)
         X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
         
-        Y_l = np.quantile(self.evaluate_repeat(X_init), 0.9, axis=-1)
-        Y_h = np.quantile(self.evaluate_repeat(X_init), 0.1, axis=-1)
-        # Y_h = self.evaluate_repeat(X_init).max(axis=-1)
+        Y_l = self.evaluate_repeat(X_init).min(axis=-1)
+        Y_h = self.evaluate_repeat(X_init).max(axis=-1)
         
-        Y_paretos = find_pareto_front(Y_init)
-        Y_paretos_l = find_pareto_front(Y_l)
-        Y_paretos_h = find_pareto_front(Y_h)
+        #namespace to dict
+        solver_args = vars(get_solver_args())
+        
+        
+        solver = NSGA2Solver(**solver_args)
+
+        # find Pareto front
+        solution = solver.solve(prob, X_init, Y_init)
+        solution_l = solver.solve(prob, X_init, Y_l)
+        solution_h = solver.solve(prob, X_init, Y_h)
+        
+        Y_paretos = solution['y']
+        Y_paretos_l = solution_l['y']
+        Y_paretos_h = solution_h['y']
+        return [Y_paretos, Y_paretos_l, Y_paretos_h]
+    
+    # def pareto_front(self, n_pareto_points=1000):
+        
+    #     from .common import generate_initial_samples
+    #     from mobo.utils import find_pareto_front
+         
+    #     prob = self.__class__(repeat_eval=50)
+    #     X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
+        
+    #     Y_l = np.quantile(self.evaluate_repeat(X_init), 0.9, axis=-1)
+    #     Y_h = np.quantile(self.evaluate_repeat(X_init), 0.1, axis=-1)
+    #     # Y_h = self.evaluate_repeat(X_init).max(axis=-1)
+        
+    #     Y_paretos = find_pareto_front(Y_init)
+    #     Y_paretos_l = find_pareto_front(Y_l)
+    #     Y_paretos_h = find_pareto_front(Y_h)
         
 
-        return [Y_paretos, Y_paretos_l, Y_paretos_h]
+    #     return [Y_paretos, Y_paretos_l, Y_paretos_h]
     
     def evaluate_repeat(self, x: np.array) -> np.array:
         y_true = self.f(x)
@@ -114,14 +141,14 @@ class PeaksS5R3(Peaks):
             repeat_eval=3
         )
 
-class Peaks6D(RiskyProblem):
+class Peaks4D(RiskyProblem):
 
     def __init__(self, sigma=0., repeat_eval=1):
         
         self.sigma = sigma
         self.repeat_eval = repeat_eval
-        self.bounds = np.array([[0.0] * 6, [1.0] * 6])  # Adjusted for 6 dimensions
-        self.dim = 6  # Adjusted for 6 dimensions
+        self.bounds = np.array([[0.0] * 4, [1.0] * 4])  # Adjusted for 6 dimensions
+        self.dim = 4  # Adjusted for 6 dimensions
         self.num_objectives = 2
         
         super().__init__(
@@ -177,23 +204,7 @@ class Peaks6D(RiskyProblem):
         Y_paretos_l = solution_l['y']
         Y_paretos_h = solution_h['y']
         return [Y_paretos, Y_paretos_l, Y_paretos_h]
-    
-        from .common import generate_initial_samples
-        from mobo.utils import find_pareto_front
-         
-        prob = self.__class__(repeat_eval=50)
-        X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
-        
-        Y_l = np.quantile(self.evaluate_repeat(X_init), 0.9, axis=-1)
-        Y_h = np.quantile(self.evaluate_repeat(X_init), 0.1, axis=-1)
-        # Y_h = self.evaluate_repeat(X_init).max(axis=-1)
-        
-        Y_paretos = find_pareto_front(Y_init)
-        Y_paretos_l = find_pareto_front(Y_l)
-        Y_paretos_h = find_pareto_front(Y_h)
-        
 
-        return [Y_paretos, Y_paretos_l, Y_paretos_h]
     
     def evaluate_repeat(self, x: np.array) -> np.array:
         y_true = self.f(x)
@@ -201,6 +212,7 @@ class Peaks6D(RiskyProblem):
         y_true = np.stack([y_true] * self.repeat_eval, axis=-1)
         y = y_true + np.expand_dims(sigmas, -1) * np.random.randn(*y_true.shape)
         return y
+    
     def f(self, X):
         # Adjusted for 6-dimensional inputs
         y1 = self.brannin_function(X[:, :2])  # Use the first 2 dimensions for Brannin
