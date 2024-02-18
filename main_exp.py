@@ -24,7 +24,7 @@ import wandb
 
 from mobo.algorithms import RAqNEHVI, qNEHVI, MARS
 
-class MOBOEXP(MARS):
+class MOBOEXP(RAqNEHVI):
     """
     Base class of algorithm framework, inherit this class with different configs to create new algorithm classes
     """
@@ -172,12 +172,12 @@ if __name__ == "__main__":
 
     args, framework_args = get_args()
     
-    args.algo = 'mars'
+    args.algo = 'raqnehvi'
     args.problem = 'exp'
     args.n_iter = 4
     args.n_init_sample = 12
     args.batch_size = 6
-    args.subfolder = 'testing'
+    args.subfolder = 'MVaRmodel'
     framework_args["solver"]["batch_size"] = args.batch_size
     framework_args["selection"]["batch_size"] = args.batch_size
 
