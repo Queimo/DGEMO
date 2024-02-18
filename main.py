@@ -87,7 +87,7 @@ def run_experiment(args, framework_args):
             solution
         )
         # update & export current status to csv
-        exporter.update(X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acq)
+        exporter.update(X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acq, rho_next)
 
         # print(exporter.get_wandb_data())
         run.log(exporter.get_wandb_data(args), step=step, commit=False)

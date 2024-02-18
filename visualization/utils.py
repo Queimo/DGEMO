@@ -3,6 +3,17 @@ import pandas as pd
 
 from itertools import cycle
 
+from scipy.stats import norm
+
+
+def calculate_var(mean, std_dev, alpha=0.9):
+
+    # Calculate the z-score for the given alpha level
+    z_score = norm.ppf(alpha)
+
+    # Calculate mVaR for each variable
+    var = mean + z_score * std_dev
+    return var
 
 def get_problem_dir(args):
     '''

@@ -32,19 +32,6 @@ from botorch.posteriors import GPyTorchPosterior
 from scipy.stats import norm
 
 
-def calculate_mvar(posterior: GPyTorchPosterior, alpha: float):
-    # Assuming posterior is a GPyTorchPosterior object with mean and variance
-    mean = -posterior.mean.detach().cpu().numpy()
-    std_dev = posterior.variance.sqrt().detach().cpu().numpy()
-
-    # Calculate the z-score for the given alpha level
-    z_score = norm.ppf(alpha)
-
-    # Calculate mVaR for each variable
-    mvar = mean + z_score * std_dev
-    return mvar
-
-
 class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
     """
     Gaussian process
@@ -74,6 +61,7 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
         S, dS, hS = None, None, None  # std
         rho_F, drho_F = None, None  # noise mean
         rho_S, drho_S = None, None  # noise std
+        mvar_F = None
 
         with torch.no_grad():
             post = self.bo_model.posterior(
@@ -83,14 +71,13 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
             F = -post.mean.squeeze(-1).detach().cpu().numpy()
             S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
-            if calculate_mvar:
+            if calc_mvar:
                 mvar_post = self.bo_model.posterior(
                     X,
                     observation_noise=True,
-                    posterior_transform=ExpectationPosteriorTransform(n_w=11),
                 )
                 
-                mvar_F = calculate_mvar(mvar_post, self.alpha)
+                mvar_F = self.mvar(mvar_post)
 
         if noise:
             rho_post = self.bo_model.likelihood.noise_covar.noise_model.posterior(X)

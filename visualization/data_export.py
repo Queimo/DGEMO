@@ -14,6 +14,7 @@ from .arguments import get_vis_args
 from .utils import get_problem_dir, get_algo_names, defaultColors
 import yaml
 import pathlib
+from .utils import calculate_var
 
 """
 Export csv files for external visualization.
@@ -43,7 +44,13 @@ class DataExport:
         if args.ref_point is None:
             args.ref_point = optimizer.ref_point_handler.get_ref_point()
         hv_value = calc_hypervolume(pfront, ref_point=args.ref_point)
-
+        
+        #compute MVaR HV
+        mvar = calculate_var(Y, rho, self.optimizer.solver.alpha)
+        mvar_pfront, mvar_pidx = find_pareto_front(mvar, return_index=True)
+        mvar_pset = X[mvar_pidx]
+        mvar_hv_value = calc_hypervolume(mvar_pfront, ref_point=args.ref_point)
+        
         # init data frame
         column_names = ["iterID"]
         d1 = {"iterID": np.zeros(n_samples, dtype=int)}
@@ -54,14 +61,23 @@ class DataExport:
             var_name = f"x{i + 1}"
             d1[var_name] = X[:, i]
             d2[var_name] = pset[:, i]
+            d2[f"mvar_{var_name}"] = mvar_pset[:, i]
             column_names.append(var_name)
 
         # performance
         for i in range(self.n_obj):
             obj_name = f"f{i + 1}"
             d1[obj_name] = Y[:, i]
+            col_name = f"rho_f{i + 1}"
+            d1[col_name] = rho[:, i]
+            col_name = f"mvar_f{i + 1}"
+            d1[col_name] = mvar[:, i]
+            
             obj_name = f"Pareto_f{i + 1}"
             d2[obj_name] = pfront[:, i]
+            col_name = f"Pareto_mvar_f{i + 1}"
+            d2[col_name] = mvar_pfront[:, i] 
+            
 
         # predicted performance
         for i in range(self.n_obj):
@@ -73,6 +89,7 @@ class DataExport:
             d1[obj_pred_name] = np.zeros(n_samples)
 
         d1["Hypervolume_indicator"] = np.full(n_samples, hv_value)
+        d1["MVaR_Hypervolume_indicator"] = np.full(n_samples, mvar_hv_value)
 
         self.export_data = pd.DataFrame(data=d1)  # export all data
         self.export_pareto = pd.DataFrame(data=d2)  # export pareto data
@@ -87,7 +104,7 @@ class DataExport:
             and self.optimizer.selection.has_family
         )
 
-    def update(self, X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acquisition):
+    def update(self, X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acquisition, rho_next):
         """
         For each algorithm iteration adds data for visualization.
         Input:
@@ -105,6 +122,12 @@ class DataExport:
         pset = self.optimizer.status["pset"]
         pfront = self.optimizer.status["pfront"]
         hv_value = self.optimizer.status["hv"]
+        
+        mvar = self.optimizer.status['mvar']
+        mvar_pfront = self.optimizer.status['mvar_pfront']
+        mvar_pset = self.optimizer.status['mvar_pset']
+        mvar_hv_value = self.optimizer.status['mvar_hv']
+        
         # Y_next_pred_mean = self.optimizer.status['Y_next_pred_mean']
         # Y_next_pred_std = self.optimizer.status['Y_next_pred_std']
         # acquisition = self.optimizer.status['acquisition']
@@ -121,12 +144,19 @@ class DataExport:
             var_name = f"x{i + 1}"
             d1[var_name] = X_next[:, i]
             d2[var_name] = pset[:, i]
+            d2[f"mvar{var_name}"] = mvar_pset[:, i]
 
         # performance and predicted performance
         for i in range(self.n_obj):
             col_name = f"f{i + 1}"
             d1[col_name] = Y_next[:, i]
+            col_name = f"rho_f{i + 1}"
+            d1[col_name] = rho_next[:, i]
+            col_name = f"mvar_f{i + 1}"
+            d1[col_name] = mvar[:, i]
+            
             d2["Pareto_" + col_name] = pfront[:, i]
+            d2["Pareto_mvar_f{i + 1}"] = mvar_pfront[:, i]
 
             col_name = f"Expected_f{i + 1}"
             d1[col_name] = Y_next_pred_mean[:, i]
@@ -136,6 +166,7 @@ class DataExport:
             d1[col_name] = acquisition[:, i]
 
         d1["Hypervolume_indicator"] = np.full(self.batch_size, hv_value)
+        d1["MVaR_Hypervolume_indicator"] = np.full(self.batch_size, mvar_hv_value)
 
         if self.has_family:
             info = self.optimizer.info
@@ -225,6 +256,7 @@ class DataExport:
                     d4["x2"] = X_mesh[:, 1]
                 except Exception as e:
                     print("d4 not created")
+                    print(e)
                     d4 = {}
                     pass
                                            

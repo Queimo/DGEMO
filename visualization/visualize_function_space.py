@@ -9,7 +9,17 @@ import pandas as pd
 from arguments import get_vis_args
 from utils import get_problem_dir, get_algo_names, defaultColors
 import yaml
+from scipy.stats import norm
 
+
+def calculate_var(mean, std_dev, alpha=0.9):
+
+    # Calculate the z-score for the given alpha level
+    z_score = norm.ppf(alpha)
+
+    # Calculate mVaR for each variable
+    var = mean + z_score * std_dev
+    return var
 
 
 def get_data_of_step(pareto_approx_df, selected_iteration):
@@ -52,13 +62,20 @@ def main():
     )
     n_obj = len([key for key in data_list[0] if key.startswith("f")])
 
-    for kk,algo in enumerate(algo_names):
-
+    for kk, algo in enumerate(algo_names):
 
         # Create one figure for each seed
         fig = go.Figure()
 
         approx_all_df = pd.read_csv(f"{problem_dir}/{algo}/{seed}/ApproximationAll.csv")
+
+        # calculate VaR
+        if "rho_F_1" in approx_all_df.columns:
+            alpha = yml_list[kk]["solver"]["alpha"]
+            for i in range(1, n_obj + 1):
+                approx_all_df[f"mvar_F_{i}"] = calculate_var(
+                    approx_all_df[f"F_{i}"], approx_all_df[f"rho_F_{i}"], alpha
+                )
 
         # label the sample
         def makeLabel(dfRow):
@@ -71,8 +88,8 @@ def main():
         for df in data_list + paretoEval_list + paretoGP_list + [approx_all_df]:
             df["hovertext"] = df.apply(makeLabel, axis=1)
         # Maximum number of iterations to display
-        
-        max_iterations = approx_all_df["iterID"].unique().shape[0] +1
+
+        max_iterations = approx_all_df["iterID"].unique().shape[0] + 1
 
         # get one iteration to check length of data and take square root
         approx_all_i = get_data_of_step(approx_all_df, 1)
@@ -99,7 +116,9 @@ def main():
             paretoEval_trimmed = paretoEval_list[kk][
                 paretoEval_list[kk]["iterID"] == iteration
             ]
-            paretoGP_trimmed = paretoGP_list[kk][paretoGP_list[kk]["iterID"] == iteration]
+            paretoGP_trimmed = paretoGP_list[kk][
+                paretoGP_list[kk]["iterID"] == iteration
+            ]
 
             # Data reshaping remains the same
             x = approx_all_i["x1"].values.reshape((n_grid, n_grid))
@@ -115,7 +134,7 @@ def main():
                         showscale=False,
                         visible=(iteration == 1),
                         zmin=min(approx_all_df[f"F_{i}"]),
-                        zmax=max(approx_all_df[f"F_{i}"])
+                        zmax=max(approx_all_df[f"F_{i}"]),
                     ),
                     row=i,
                     col=1,
@@ -132,24 +151,26 @@ def main():
                         showscale=False,
                         visible=(iteration == 1),
                         zmin=min(approx_all_df[f"S_{i}"]),
-                        zmax=max(approx_all_df[f"S_{i}"])
+                        zmax=max(approx_all_df[f"S_{i}"]),
                     ),
                     row=i,
                     col=2,
                 )
-                
+
                 # add rho_1 rho_2
                 if hasattr(approx_all_i, f"rho_F_{i}"):
                     fig.add_trace(
                         go.Contour(
                             x=x[0],
                             y=y[:, 0],
-                            z=approx_all_i[f"rho_F_{i}"].values.reshape((n_grid, n_grid)),
+                            z=approx_all_i[f"rho_F_{i}"].values.reshape(
+                                (n_grid, n_grid)
+                            ),
                             colorscale="Viridis",
                             showscale=False,
                             visible=(iteration == 1),
                             zmin=min(approx_all_df[f"rho_F_{i}"]),
-                            zmax=np.percentile(approx_all_df[f"rho_F_{i}"], 90)
+                            zmax=np.percentile(approx_all_df[f"rho_F_{i}"], 90),
                         ),
                         row=i,
                         col=3,
@@ -161,12 +182,12 @@ def main():
                         go.Contour(
                             x=x[0],
                             y=y[:, 0],
-                            z=approx_all_i[f"mvar_F_{i}"].values.reshape((n_grid, n_grid)),
+                            z=approx_all_i[f"mvar_F_{i}"].values.reshape(
+                                (n_grid, n_grid)
+                            ),
                             colorscale="Viridis",
                             showscale=False,
                             visible=(iteration == 1),
-                            zmin=min(approx_all_df[f"mvar_F_{i}"]),
-                            zmax=max(approx_all_df[f"mvar_F_{i}"])
                         ),
                         row=i,
                         col=4,
@@ -179,7 +200,7 @@ def main():
                             x=data_trimmed["x1"],
                             y=data_trimmed["x2"],
                             mode="markers",
-                            hovertext=data_trimmed['hovertext'],
+                            hovertext=data_trimmed["hovertext"],
                             hoverinfo="text",
                             visible=(iteration == 1),
                             marker=dict(
@@ -192,13 +213,13 @@ def main():
                         row=j,
                         col=i,
                     )
-                    
+
                     fig.add_trace(
                         go.Scatter(
                             x=firstsamples["x1"],
                             y=firstsamples["x2"],
                             mode="markers",
-                            hovertext=firstsamples['hovertext'],
+                            hovertext=firstsamples["hovertext"],
                             hoverinfo="text",
                             visible=(iteration == 1),
                             marker=dict(
@@ -212,14 +233,13 @@ def main():
                         col=i,
                     )
 
-
                     # data proposed
                     fig.add_trace(
                         go.Scatter(
                             x=data_proposed["x1"],
                             y=data_proposed["x2"],
                             mode="markers",
-                            hovertext=data_proposed['hovertext'],
+                            hovertext=data_proposed["hovertext"],
                             hoverinfo="text",
                             visible=(iteration == 1),
                             marker=dict(
@@ -250,10 +270,9 @@ def main():
                         row=j,
                         col=i,
                     )
-                    
-                    #paretoGP_trimmed low opacity orange circles
-                    
-                    
+
+                    # paretoGP_trimmed low opacity orange circles
+
                     fig.add_trace(
                         go.Scatter(
                             x=paretoGP_trimmed["x1"],
@@ -261,16 +280,13 @@ def main():
                             mode="markers",
                             visible=(iteration == 1),
                             marker=dict(
-                                size=4,
-                                color="orange",
-                                symbol="circle",
-                                opacity=0.9
+                                size=4, color="orange", symbol="circle", opacity=0.9
                             ),
                         ),
                         row=j,
                         col=i,
                     )
-                            
+
         # Slider setup (similar to your original setup)
         steps = []
         for iteration in range(1, max_iterations):
@@ -291,14 +307,17 @@ def main():
 
         sliders = [
             dict(
-                active=0, currentvalue={"prefix": "Iteration: "}, pad={"t": 50}, steps=steps
+                active=0,
+                currentvalue={"prefix": "Iteration: "},
+                pad={"t": 50},
+                steps=steps,
             )
         ]
 
         fig.update_layout(sliders=sliders)
-        #remove grid and background color        
+        # remove grid and background color
         fig.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor="rgba(0,0,0,0)",
         )
 
         # fig.show()
@@ -306,9 +325,9 @@ def main():
         # # Show or save the plot
         # plotly_grid_plotter(fig, f'./result/{args.problem}/{args.subfolder}/{args.problem}_seed{seed}_performance_space.html', ncols=2 if n_algo > 1 else 1)
         if args.savefig:
-            fig.write_image(f'{problem_dir}/seed{seed}_{algo}_IO_space.png')
+            fig.write_image(f"{problem_dir}/seed{seed}_{algo}_IO_space.png")
         else:
-            fig.write_html(f'{problem_dir}/seed{seed}_{algo}_IO_space.html')
+            fig.write_html(f"{problem_dir}/seed{seed}_{algo}_IO_space.html")
 
         print(f"Saved {problem_dir}/seed{seed}_{algo}_IO_space")
 

@@ -4,6 +4,7 @@ from .utils import (
     Timer,
     find_pareto_front,
     calc_hypervolume,
+    calculate_var
 )
 from .factory import init_from_config
 from .transformation import StandardTransform
@@ -61,6 +62,9 @@ class MOBO:
             'pfront': None,
             'hv': None,
             'ref_point': self.ref_point_handler.get_ref_point(is_botorch=False),
+            'mvar_pset': None,
+            'mvar_pfront': None,
+            'mvar_hv': None,
         }
 
         # other component-specific information that needs to be stored or exported
@@ -84,6 +88,20 @@ class MOBO:
         self.status['pfront'], pfront_idx = find_pareto_front(self.Y, return_index=True)
         self.status['pset'] = self.X[pfront_idx]
         self.status['hv'] = calc_hypervolume(self.status['pfront'], self.ref_point_handler.get_ref_point(is_botorch=False))
+        
+        #MVaR Calculation
+        
+        #compute MVaR HV
+        mvar = calculate_var(self.Y, self.rho, alpha=self.solver.alpha)
+        mvar_pfront, mvar_pidx = find_pareto_front(mvar, return_index=True)
+        mvar_pset = self.X[mvar_pidx]
+        mvar_hv_value = calc_hypervolume(mvar_pfront, ref_point=self.optimizer.solver.ref_point)
+    
+        self.status['mvar'] = mvar       
+        self.status['mvar_pfront'] = mvar_pfront
+        self.status['mvar_pset'] = mvar_pset
+        self.status['mvar_hv'] = mvar_hv_value
+        
         # print('Current hypervolume: %.4f' % self.status['hv'])
     
     def step(self):
