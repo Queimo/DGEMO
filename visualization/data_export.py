@@ -46,7 +46,12 @@ class DataExport:
         hv_value = calc_hypervolume(pfront, ref_point=args.ref_point)
         
         #compute MVaR HV
-        mvar = calculate_var(Y, rho, self.optimizer.solver.alpha)
+        if not hasattr(self.optimizer.solver, "alpha"):
+            alpha = 0.9
+        else:
+            alpha = self.optimizer.solver.alpha
+        self.alpha = alpha
+        mvar = calculate_var(Y, rho, alpha=alpha)
         mvar_pfront, mvar_pidx = find_pareto_front(mvar, return_index=True)
         mvar_pset = X[mvar_pidx]
         mvar_hv_value = calc_hypervolume(mvar_pfront, ref_point=args.ref_point)
@@ -55,13 +60,14 @@ class DataExport:
         column_names = ["iterID"]
         d1 = {"iterID": np.zeros(n_samples, dtype=int)}
         d2 = {"iterID": np.zeros(len(pset), dtype=int)}
+        d5 = {"iterID": np.zeros(len(mvar_pset), dtype=int)}
 
         # design variables
         for i in range(self.n_var):
             var_name = f"x{i + 1}"
             d1[var_name] = X[:, i]
             d2[var_name] = pset[:, i]
-            d2[f"mvar_{var_name}"] = mvar_pset[:, i]
+            d5[f"mvar_{var_name}"] = mvar_pset[:, i]
             column_names.append(var_name)
 
         # performance
@@ -76,7 +82,7 @@ class DataExport:
             obj_name = f"Pareto_f{i + 1}"
             d2[obj_name] = pfront[:, i]
             col_name = f"Pareto_mvar_f{i + 1}"
-            d2[col_name] = mvar_pfront[:, i] 
+            d5[col_name] = mvar_pfront[:, i] 
             
 
         # predicted performance
@@ -98,6 +104,7 @@ class DataExport:
             columns=column_names
         )  # export pareto approximation data
         self.export_approx_all = pd.DataFrame(columns=["iterID"])  # export pareto approximation data
+        self.export_mvar_pareto = pd.DataFrame(data=d5)  # export pareto data
 
         self.has_family = (
             hasattr(self.optimizer.selection, "has_family")
@@ -123,7 +130,7 @@ class DataExport:
         pfront = self.optimizer.status["pfront"]
         hv_value = self.optimizer.status["hv"]
         
-        mvar = self.optimizer.status['mvar']
+        mvar = calculate_var(Y_next, rho_next, self.alpha)
         mvar_pfront = self.optimizer.status['mvar_pfront']
         mvar_pset = self.optimizer.status['mvar_pset']
         mvar_hv_value = self.optimizer.status['mvar_hv']
@@ -138,13 +145,16 @@ class DataExport:
         d2 = {
             "iterID": np.full(pfront.shape[0], self.iter, dtype=int)
         }  # export pareto data
+        d5 = {
+            "iterID": np.full(mvar_pfront.shape[0], self.iter, dtype=int)
+        }  # export pareto data
 
         # design variables
         for i in range(self.n_var):
             var_name = f"x{i + 1}"
             d1[var_name] = X_next[:, i]
             d2[var_name] = pset[:, i]
-            d2[f"mvar{var_name}"] = mvar_pset[:, i]
+            d5[f"mvar{var_name}"] = mvar_pset[:, i]
 
         # performance and predicted performance
         for i in range(self.n_obj):
@@ -156,7 +166,7 @@ class DataExport:
             d1[col_name] = mvar[:, i]
             
             d2["Pareto_" + col_name] = pfront[:, i]
-            d2["Pareto_mvar_f{i + 1}"] = mvar_pfront[:, i]
+            d5["Pareto_mvar_f{i + 1}"] = mvar_pfront[:, i]
 
             col_name = f"Expected_f{i + 1}"
             d1[col_name] = Y_next_pred_mean[:, i]
@@ -219,49 +229,44 @@ class DataExport:
             #create dataframe from val dict. If field in val is 2d array, then create columns for each element in array
             d4 = {}
             if pset.shape[1] == 2:
-                try:
-                    n_grid = 25
-                    x2 = np.linspace(0, 1, n_grid)
-                    x1 = np.linspace(0, 1, n_grid)
-                    x1_mesh, x2_mesh = np.meshgrid(x1, x2)
-                    x_mesh = np.vstack((x1_mesh.flatten(), x2_mesh.flatten())).T
-                    val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True, calc_mvar=True)
-                    
-                    for key in val:
-                        if val[key] is None:
-                            continue
-                        if val[key].ndim == 1:
-                            d4[key] = val[key]
-                        else:
-                            for i in range(val[key].shape[1]):
-                                col_name = f"{key}_{i + 1}"
-                                d4[col_name] = val[key][:, i]
-                    
-                    # add iteration id and x1, x2 columns
-                    d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
-                    
-                    X_mesh, Y_mesh = self.transformation.undo(
-                        x_mesh, val["F"]
-                    )
-                    
-                    _, mvar_F_mesh = self.transformation.undo(x_mesh, val["mvar_F"])
-                    
-                    d4["F_1"] = Y_mesh[:, 0]
-                    d4["F_2"] = Y_mesh[:, 1]
-                    
-                    d4["mvar_F_1"] = mvar_F_mesh[:, 0]
-                    d4["mvar_F_2"] = mvar_F_mesh[:, 1]
-                    
-                    d4["x1"] = X_mesh[:, 0]
-                    d4["x2"] = X_mesh[:, 1]
-                except Exception as e:
-                    print("d4 not created")
-                    print(e)
-                    d4 = {}
-                    pass
+                n_grid = 25
+                x2 = np.linspace(0, 1, n_grid)
+                x1 = np.linspace(0, 1, n_grid)
+                x1_mesh, x2_mesh = np.meshgrid(x1, x2)
+                x_mesh = np.vstack((x1_mesh.flatten(), x2_mesh.flatten())).T
+                val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True)
+                val["mvar_F"] = calculate_var(val["F"], val["rho_F"], self.alpha)
+                
+                for key in val:
+                    if val[key] is None:
+                        continue
+                    if val[key].ndim == 1:
+                        d4[key] = val[key]
+                    else:
+                        for i in range(val[key].shape[1]):
+                            col_name = f"{key}_{i + 1}"
+                            d4[col_name] = val[key][:, i]
+                
+                # add iteration id and x1, x2 columns
+                d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
+                
+                X_mesh, Y_mesh = self.transformation.undo(
+                    x_mesh, val["F"]
+                )
+                
+                _, mvar_F_mesh = self.transformation.undo(x_mesh, val["mvar_F"])
+                
+                d4["F_1"] = Y_mesh[:, 0]
+                d4["F_2"] = Y_mesh[:, 1]
+                
+                d4["mvar_F_1"] = mvar_F_mesh[:, 0]
+                d4["mvar_F_2"] = mvar_F_mesh[:, 1]
+                
+                d4["x1"] = X_mesh[:, 0]
+                d4["x2"] = X_mesh[:, 1]
                                            
             df4 = pd.DataFrame(data=d4)
-            
+        df5 = pd.DataFrame(data=d5)            
 
         df1 = pd.DataFrame(data=d1)
         df2 = pd.DataFrame(data=d2)

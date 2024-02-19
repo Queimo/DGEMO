@@ -95,7 +95,7 @@ class MOBO:
         mvar = calculate_var(self.Y, self.rho, alpha=self.solver.alpha)
         mvar_pfront, mvar_pidx = find_pareto_front(mvar, return_index=True)
         mvar_pset = self.X[mvar_pidx]
-        mvar_hv_value = calc_hypervolume(mvar_pfront, ref_point=self.optimizer.solver.ref_point)
+        mvar_hv_value = calc_hypervolume(mvar_pfront, ref_point=self.ref_point_handler.get_ref_point(is_botorch=False))
     
         self.status['mvar'] = mvar       
         self.status['mvar_pfront'] = mvar_pfront
@@ -154,10 +154,7 @@ class MOBO:
 
         # statistics
         self.global_timer.log("Total runtime", reset=False)
-        print(
-            "Total evaluations: %d, hypervolume: %.4f\n"
-            % (self.sample_num, self.status["hv"])
-        )
+        print(f"Total evaluations: {self.sample_num}, mVaR hypervolume: {self.status['mvar_hv']:.4f}, hypervolume: {self.status['hv']:.4f}")
 
         # return new data iteration by iteration
         return X_next, Y_next, rho_next, Y_next_pred_mean, Y_next_pred_std, acquisition
