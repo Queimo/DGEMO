@@ -22,7 +22,7 @@ from mobo.factory import init_from_config
 from mobo.transformation import StandardTransform
 import wandb
 
-from mobo.algorithms import RAqNEHVI, qNEHVI, MARS
+from mobo.algorithms import RAqNEHVI, qNEHVI, MARS, RAqLogNEHVI
 
 class MOBOEXP(RAqNEHVI):
     """
@@ -31,7 +31,7 @@ class MOBOEXP(RAqNEHVI):
 
     def __init__(self, problem, n_iter, ref_point_handler, framework_args, batch_size=6):
         
-        self.df = problem.df_mean_std
+        self.df = problem.df_mean_std.iloc[:18,:]
         self.batch_size = batch_size
         
         super().__init__(problem, n_iter, ref_point_handler, framework_args)
@@ -160,12 +160,14 @@ def run_experiment(args, framework_args):
             solution
         )
         # update & export current status to csv
-        exporter.update(X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acq)
+        exporter.update(X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acq, rho_next)
 
         gc.collect()
 
         exporter.write_csvs()
         exporter.save_psmodel()
+    
+    
 
 if __name__ == "__main__":
     from arguments import get_args
@@ -174,10 +176,10 @@ if __name__ == "__main__":
     
     args.algo = 'raqnehvi'
     args.problem = 'exp'
-    args.n_iter = 4
+    args.n_iter = 2
     args.n_init_sample = 12
     args.batch_size = 6
-    args.subfolder = 'MVaRmodel'
+    args.subfolder = 'MVARmodel'
     framework_args["solver"]["batch_size"] = args.batch_size
     framework_args["selection"]["batch_size"] = args.batch_size
 

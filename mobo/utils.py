@@ -14,7 +14,7 @@ class Timer:
 
         if string is not None:
             msg = string + ': ' + msg
-        # print(msg)
+        print(msg)
         
         if reset:
             self.t = time()
