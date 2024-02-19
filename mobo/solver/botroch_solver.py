@@ -15,6 +15,7 @@ from botorch.acquisition.multi_objective.monte_carlo import (
 from botorch.acquisition.multi_objective.logei import (
     qLogExpectedHypervolumeImprovement,
     qLogNoisyExpectedHypervolumeImprovement,
+    logplusexp,
 )
 from botorch.utils.multi_objective.box_decompositions.non_dominated import (
     FastNondominatedPartitioning,
@@ -45,28 +46,13 @@ RAW_SAMPLES = 512 if not SMOKE_TEST else 4
 MC_SAMPLES = 128 if not SMOKE_TEST else 16
 
 
-class DeterministicModel3(DeterministicModel):
-
-    def __init__(self, num_outputs, input_transform=None, **kwargs):
-        super().__init__()
-        self.input_transform = input_transform
-
-    def forward(self, X: torch.Tensor) -> torch.Tensor:
-        # y = torch.min(X[..., 1],X[..., 0]).unsqueeze(-1)
-        y = X[..., 1].unsqueeze(-1)
-        return y
-
-
-model3 = DeterministicModel3(
-    num_outputs=1,
-    input_transform=InputPerturbation(torch.zeros((11, 2), **tkwargs)),
-)
-
-
 class BoTorchSolver(NSGA2Solver):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.alpha = kwargs["alpha"]
+        self.n_w = kwargs["n_w"]
+        print("alpha", self.alpha)
 
     @abstractmethod
     def bo_solve(self, problem, X, Y, rho):
@@ -75,7 +61,7 @@ class BoTorchSolver(NSGA2Solver):
     def nsga2_solve(self, problem, X, Y):
         return super().solve(problem, X, Y)
 
-    def optimize_acqf_loop(self, problem, acq_func):
+    def optimize_acqf_loop(self, problem, acq_func, sequential=False):
 
         standard_bounds = torch.zeros(2, problem.n_var, **tkwargs)
         standard_bounds[1] = 1
@@ -91,7 +77,7 @@ class BoTorchSolver(NSGA2Solver):
                     num_restarts=NUM_RESTARTS,
                     raw_samples=RAW_SAMPLES,  # used for intialization heuristic
                     options=options,
-                    sequential=True,
+                    sequential=sequential,
                 )
                 torch.cuda.empty_cache()
                 gc.collect()
@@ -119,31 +105,8 @@ class BoTorchSolver(NSGA2Solver):
         self.solution = self.nsga2_solve(problem, X, Y)
         return self.bo_solve(problem, X, Y, rho)
 
-
-class qLogNEHVI(qNoisyExpectedHypervolumeImprovement):
-
-    def __init__(
-        self,
-        model,
-        ref_point,
-        X_baseline,
-        sampler,
-        objective,
-        prune_baseline,
-        det_model,
-    ):
-        super().__init__(
-            model=model,
-            ref_point=ref_point,
-            X_baseline=X_baseline,
-            sampler=sampler,
-            objective=objective,
-            prune_baseline=True,
-            cache_root=False,
-        )
-
-        self.det_model = det_model
-
+class qNEHVI(qNoisyExpectedHypervolumeImprovement):
+    
     @concatenate_pending_points
     @t_batch_mode_transform()
     def forward(self, X):
@@ -158,20 +121,38 @@ class qLogNEHVI(qNoisyExpectedHypervolumeImprovement):
         self._set_sampler(q_in=q_in, posterior=posterior)
         samples = self._get_f_X_samples(posterior=posterior, q_in=q_in)
 
-        # y3 = self.det_model.posterior(X).mean
-        # y3_sa = y3.expand([MC_SAMPLES, -1, -1, -1])
-        # # concatenate the samples_full and y3
-        # samples= torch.cat([samples, y3_sa], dim=-1)
-        # Add previous nehvi from pending points.
         return self._compute_qehvi(samples=samples, X=X) + self._prev_nehvi
+
+
+class qLogNEHVI(qLogNoisyExpectedHypervolumeImprovement):
+    
+    @concatenate_pending_points
+    @t_batch_mode_transform()
+    def forward(self, X):
+        X_full = torch.cat([match_batch_shape(self.X_baseline, X), X], dim=-2)
+        posterior = self.model.posterior(X_full, observation_noise=True)
+        # Account for possible one-to-many transform and the model batch dimensions in
+        # ensemble models.
+        event_shape_lag = 1 if is_ensemble(self.model) else 2
+        n_w = (
+            posterior._extended_shape()[X_full.dim() - event_shape_lag]
+            // X_full.shape[-2]
+        )
+        q_in = X.shape[-2] * n_w
+        self._set_sampler(q_in=q_in, posterior=posterior)
+        samples = self._get_f_X_samples(posterior=posterior, q_in=q_in)
+        # Add previous nehvi from pending points.
+        nehvi = self._compute_log_qehvi(samples=samples, X=X)
+        if self.incremental_nehvi:
+            return nehvi
+        return logplusexp(nehvi, self._prev_nehvi.log())
 
 
 class RAqNEHVISolver(BoTorchSolver):
 
     def __init__(self, *args, **kwargs):
-        self.alpha = kwargs["alpha"]
-        self.n_w = kwargs["n_w"]
-        print("alpha", self.alpha)
+        self.sequential = True
+        self.hvi_class = qNEHVI
 
         super().__init__(*args, **kwargs)
 
@@ -191,52 +172,29 @@ class RAqNEHVISolver(BoTorchSolver):
             model=model, X_baseline=X_baseline, objective=objective
         )
 
-        acq_func = qLogNEHVI(
+        acq_func = self.hvi_class(
             model=model,
             ref_point=ref_point,
             X_baseline=X_baseline,
             sampler=sampler,
             objective=objective,
             prune_baseline=True,
-            det_model=model3,
+            cache_root=True,
         )
 
-        selection = self.optimize_acqf_loop(problem, acq_func)
+        selection = self.optimize_acqf_loop(problem, acq_func, sequential=self.sequential)
 
         return selection
+    
+class RAqLogNEHVISolver(RAqNEHVISolver):
+     
+    def __init__(self, *args, **kwargs):
+        self.hvi_class = qLogNEHVI
+
+        super().__init__(*args, **kwargs)
 
 
 class qNEI(qNoisyExpectedImprovement):
-
-    def __init__(
-        self,
-        model,
-        X_baseline,
-        objective,
-        prune_baseline,
-        sampler,
-        det_model,
-    ):
-        super().__init__(
-            model=model,
-            X_baseline=X_baseline,
-            objective=objective,
-            prune_baseline=prune_baseline,
-            sampler=sampler,
-        )
-
-        self.det_model = det_model
-        Y_12 = model.posterior(X_baseline, observation_noise=True).mean
-        Y_3 = det_model.posterior(X_baseline).mean
-        Y_samples = torch.cat([Y_12, Y_3], dim=1)
-        self.obj3 = get_MARS(
-            model=self.det_model,
-            n_obj=Y_samples.shape[-1],
-            n_w=objective.n_w,
-            X_baseline=X_baseline,
-            alpha=objective.alpha,
-            Y_samples=Y_samples,
-        )
 
     def _get_samples_and_objectives(self, X):
         r"""Compute samples at new points, using the cached root decomposition.
@@ -254,28 +212,21 @@ class qNEI(qNoisyExpectedImprovement):
         posterior = self.model.posterior(
             X_full, posterior_transform=self.posterior_transform, observation_noise=True
         )
-        self._cache_root = False
         if not self._cache_root:
             samples_full = super().get_posterior_samples(posterior)
-
-            y3 = self.det_model.posterior(X_full).mean
-            y3_sa = y3.expand([MC_SAMPLES, -1, -1, -1])
-            # concatenate the samples_full and y3
-            samples_full = torch.cat([samples_full, y3_sa], dim=-1)
-
             samples = samples_full[..., -q:, :]
-            obj_full = self.obj3(samples_full, X=X_full)
+            obj_full = self.objective(samples_full, X=X_full)
             # assigning baseline buffers so `best_f` can be computed in _sample_forward
             self.baseline_obj, obj = obj_full[..., :-q], obj_full[..., -q:]
             self.baseline_samples = samples_full[..., :-q, :]
-        # else:
-        #     # handle one-to-many input transforms
-        #     n_plus_q = X_full.shape[-2]
-        #     n_w = posterior._extended_shape()[-2] // n_plus_q
-        #     q_in = q * n_w
-        #     self._set_sampler(q_in=q_in, posterior=posterior)
-        #     samples = self._get_f_X_samples(posterior=posterior, q_in=q_in)
-        #     obj = self.objective(samples, X=X_full[..., -q:, :])
+        else:
+            # handle one-to-many input transforms
+            n_plus_q = X_full.shape[-2]
+            n_w = posterior._extended_shape()[-2] // n_plus_q
+            q_in = q * n_w
+            self._set_sampler(q_in=q_in, posterior=posterior)
+            samples = self._get_f_X_samples(posterior=posterior, q_in=q_in)
+            obj = self.objective(samples, X=X_full[..., -q:, :])
 
         return samples, obj
 
@@ -283,10 +234,6 @@ class qNEI(qNoisyExpectedImprovement):
 class MARSSolver(BoTorchSolver):
 
     def __init__(self, *args, **kwargs):
-        self.alpha = kwargs["alpha"]
-        self.n_w = kwargs["n_w"]
-        print("alpha", self.alpha)
-
         super().__init__(*args, **kwargs)
 
     def bo_solve(self, problem, X, Y, rho):
@@ -295,15 +242,10 @@ class MARSSolver(BoTorchSolver):
         X_baseline = torch.from_numpy(X).to(**tkwargs)
         model = surrogate_model.bo_model
 
-        Y_samples = model.posterior(X_baseline, observation_noise=True).mean
-        # Y_samples = None
-
-        mvar_obj = MVaR(n_w=self.n_w, alpha=self.alpha)
-
         ref_point = get_nehvi_ref_point(
             model=model,
             X_baseline=torch.from_numpy(X).to(**tkwargs),
-            objective=mvar_obj,
+            objective=MVaR(n_w=self.n_w, alpha=self.alpha),
         )
         print("mvar_ref_point", ref_point)
 
@@ -311,20 +253,18 @@ class MARSSolver(BoTorchSolver):
 
         mars = get_MARS(
             model=model,
-            n_obj=Y_samples.shape[-1],
+            n_obj=Y.shape[-1],
             n_w=self.n_w,
             X_baseline=X_baseline,
             alpha=self.alpha,
-            Y_samples=Y_samples,
         )
 
         acq_func = qNEI(
             model=model,
             X_baseline=X_baseline,
             objective=mars,
-            prune_baseline=False,
+            prune_baseline=True,
             sampler=sampler,
-            det_model=model3,
         )
 
         selection = self.optimize_acqf_loop(problem, acq_func)
