@@ -19,6 +19,7 @@ from botorch.models.model import ModelList
 from botorch.models.transforms.outcome import Standardize
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
 from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
+from gpytorch.likelihoods import LikelihoodList
 from botorch.fit import fit_gpytorch_mll, fit_gpytorch_model, fit_gpytorch_mll_torch
 
 import botorch
@@ -58,8 +59,30 @@ class BoTorchSurrogateModel(SurrogateModel):
     def __init__(self, n_var, n_obj, **kwargs):
         self.bo_model = None
         self.mll = None
+        self.state_dict = None
         self.input_transform = None
         super().__init__(n_var, n_obj)
+
+    def _fit(self, X_torch, Y_torch, rho_torch=None):
+
+        try:
+            mll, self.bo_model = self.initialize_model(
+                X_torch.clone(), Y_torch.clone(), rho_torch.clone()
+            )
+            fit_gpytorch_mll(mll, max_retries=5)
+            return
+        except RuntimeError as e:
+            print(e)
+            print("failed to fit, retrying with torch optim...")
+
+        try:
+            mll, self.bo_model = self.initialize_model(
+                X_torch.clone(), Y_torch.clone(), rho_torch.clone()
+            )
+            fit_gpytorch_mll_torch(mll, step_limit=2000)
+        except RuntimeError as e:
+            print(e)
+            print("failed to fit. Keeping the previous model.")
 
     def fit(self, X, Y, rho=None):
         X_torch = torch.tensor(X).to(**tkwargs).detach()
@@ -68,37 +91,53 @@ class BoTorchSurrogateModel(SurrogateModel):
             torch.tensor(rho).to(**tkwargs).detach() if rho is not None else None
         )
         print("rho_max", rho_torch.max())
-        for i in range(5):
-            try:
-                mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
-                fit_gpytorch_mll(mll, max_retries=5)
-                return
-            except RuntimeError as e:
-                print(e)
-                print("retrying fitting...")
-        print("failed to fit, retrying with torch optim...")
-        try:
-            mll, self.bo_model = self.initialize_model(
-                X_torch.clone(), Y_torch.clone(), rho_torch.clone()
-            )
-            fit_gpytorch_mll_torch(mll, step_limit=1000)
-        except RuntimeError as e:
-            print(e)
-            print("failed to fit. Keeping the previous model.")
+
+        mll, self.bo_model = self.initialize_model(
+            X_torch.clone(), Y_torch.clone(), rho_torch.clone()
+        )
+        self._fit(X_torch, Y_torch, rho_torch)
 
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
         # train_y_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
         train_y_var = train_rho + 1e-6
-        model = HeteroskedasticSingleTaskGP(
-            train_X=train_x,
-            train_Y=train_y_mean,
-            train_Yvar=train_y_var,
-            input_transform=self.input_transform,
-            outcome_transform=Standardize(m=self.n_obj),
-        )
-        mll = ExactMarginalLogLikelihood(model.likelihood, model)
+        # model = HeteroskedasticSingleTaskGP(
+        #     train_X=train_x,
+        #     train_Y=train_y_mean,
+        #     train_Yvar=train_y_var,
+        #     input_transform=self.input_transform,
+        #     outcome_transform=Standardize(m=self.n_obj),
+        # )
+        # mll = ExactMarginalLogLikelihood(model.likelihood, model)
+        
+        models = []
+        for i in range(self.n_obj):
+            model = HeteroskedasticSingleTaskGP(
+                train_X=train_x,
+                train_Y=train_y_mean[..., i:i+1],
+                train_Yvar=train_y_var[..., i:i+1],
+                input_transform=self.input_transform,
+                outcome_transform=Standardize(m=1),
+            )            
+            
+            models.append(model)
+        
+        model = ModelListGP(*models)
+        mll = SumMarginalLogLikelihood(model.likelihood, model)
+        
+        
+        if self.state_dict is not None:
+            try:
+                #replace each input_transform with the one from the new model
+                for i, m in enumerate(model.models):
+                    self.bo_model.models[i].input_transform = m.input_transform 
+                self.state_dict = self.bo_model.state_dict()
+                
+                model.load_state_dict(self.state_dict, strict=False)
+            except Exception as e:
+                print(e)
+                print("failed to load state dict")
 
         return mll, model
 
@@ -118,45 +157,25 @@ class BoTorchSurrogateModel(SurrogateModel):
         rho_F, drho_F = None, None  # noise mean
         rho_S, drho_S = None, None  # noise std
 
+        model = self.bo_model
+        
         post = self.bo_model.posterior(X)
         # negative because botorch assumes maximization (undo previous negative)
         F = -post.mean.squeeze(-1).detach().cpu().numpy()
         S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
         if noise:
-            rho_post = self.bo_model.likelihood.noise_covar.noise_model.posterior(X)
-            rho_F = rho_post.mean.detach().cpu().numpy()
-            rho_S = rho_post.variance.sqrt().detach().cpu().numpy()
-            if calc_gradient:
-                jac_rho = torch.autograd.functional.jacobian(
-                    lambda x: self.bo_model.likelihood.noise_covar.noise_model(
-                        x
-                    ).mean.T,
-                    X,
-                )
-                drho_F = (
-                    jac_rho.diagonal(dim1=0, dim2=2)
-                    .transpose(0, -1)
-                    .transpose(1, 2)
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
-                if std:
-                    jac_rho = torch.autograd.functional.jacobian(
-                        lambda x: self.bo_model.likelihood.noise_covar.noise_model(x)
-                        .variance.sqrt()
-                        .T,
-                        X,
-                    )
-                    drho_S = (
-                        jac_rho.diagonal(dim1=0, dim2=2)
-                        .transpose(0, -1)
-                        .transpose(1, 2)
-                        .detach()
-                        .cpu()
-                        .numpy()
-                    )
+            if isinstance(model.likelihood, LikelihoodList):
+                rho_F = np.zeros_like(F)
+                rho_S = np.zeros_like(S)
+                for i, likelihood in enumerate(model.likelihood.likelihoods):
+                    rho_post = likelihood.noise_covar.noise_model.posterior(X)
+                    rho_F[:, i] = rho_post.mean.detach().cpu().squeeze(-1).numpy()
+                    rho_S[:, i] = rho_post.variance.sqrt().detach().cpu().squeeze(-1).numpy()
+            else:
+                rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
+                rho_F = rho_post.mean.detach().cpu().numpy()
+                rho_S = rho_post.variance.sqrt().detach().cpu().numpy()
 
         # #simplest 2d --> 2d test problem
         # def f(X):

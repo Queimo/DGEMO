@@ -20,6 +20,7 @@ from gpytorch.mlls.predictive_log_likelihood import PredictiveLogLikelihood
 from botorch.fit import fit_gpytorch_mll, fit_gpytorch_model, fit_gpytorch_mll_torch
 
 import botorch
+from gpytorch.likelihoods import LikelihoodList
 from botorch.acquisition.objective import ExpectationPosteriorTransform
 
 from mobo.surrogate_model.botorch_gp_wrapper import BoTorchSurrogateModel
@@ -39,12 +40,11 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
 
     def __init__(self, n_var, n_obj, **kwargs):
         super().__init__(n_var, n_obj)
-        n_w = kwargs["n_w"]
+        self.n_w = kwargs["n_w"]
         self.alpha = kwargs["alpha"]
         self.input_transform = InputPerturbation(
-            torch.zeros((n_w, self.n_var), **tkwargs)
+            torch.zeros((self.n_w, self.n_var), **tkwargs)
         )
-        self.mvar = MVaR(n_w=n_w, alpha=self.alpha)
 
     def evaluate(
         self,
@@ -53,7 +53,6 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
         noise=False,
         calc_gradient=False,
         calc_hessian=False,
-        calc_mvar=False,
     ):
         X = torch.tensor(X).to(**tkwargs)
 
@@ -63,58 +62,28 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
         rho_S, drho_S = None, None  # noise std
         mvar_F = None
 
+        model = self.bo_model
+        
         with torch.no_grad():
-            post = self.bo_model.posterior(
-                X, posterior_transform=ExpectationPosteriorTransform(n_w=11)
+            post = model.posterior(
+                X, posterior_transform=ExpectationPosteriorTransform(n_w=self.n_w)
             )
             # negative because botorch assumes maximization (undo previous negative)
             F = -post.mean.squeeze(-1).detach().cpu().numpy()
             S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
-            if calc_mvar:
-                mvar_post = self.bo_model.posterior(
-                    X,
-                    observation_noise=True,
-                )
-                
-                mvar_F = self.mvar(mvar_post)
-
         if noise:
-            rho_post = self.bo_model.likelihood.noise_covar.noise_model.posterior(X)
-            rho_F = rho_post.mean.detach().cpu().numpy()[::11, :]
-            rho_S = rho_post.variance.sqrt().detach().cpu().numpy()[::11, :]
-            if calc_gradient:
-                jac_rho = torch.autograd.functional.jacobian(
-                    lambda x: self.bo_model.likelihood.noise_covar.noise_model.posterior(
-                        x
-                    ).mean.T,
-                    X,
-                )
-                drho_F = (
-                    jac_rho.diagonal(dim1=0, dim2=2)
-                    .transpose(0, -1)
-                    .transpose(1, 2)
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
-                if std:
-                    jac_rho = torch.autograd.functional.jacobian(
-                        lambda x: self.bo_model.likelihood.noise_covar.noise_model.posterior(
-                            x, posterior_transform=ExpectationPosteriorTransform(n_w=11)
-                        )
-                        .variance.sqrt()
-                        .T,
-                        X,
-                    )
-                    drho_S = (
-                        jac_rho.diagonal(dim1=0, dim2=2)
-                        .transpose(0, -1)
-                        .transpose(1, 2)
-                        .detach()
-                        .cpu()
-                        .numpy()
-                    )
+            if isinstance(model.likelihood, LikelihoodList):
+                rho_F = np.zeros_like(F)
+                rho_S = np.zeros_like(S)
+                for i, likelihood in enumerate(model.likelihood.likelihoods):
+                    rho_post = likelihood.noise_covar.noise_model.posterior(X)
+                    rho_F[:, i] = rho_post.mean.detach().cpu().squeeze(-1).numpy()[::self.n_w]
+                    rho_S[:, i] = rho_post.variance.sqrt().detach().cpu().squeeze(-1).numpy()[::self.n_w]
+            else:
+                rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
+                rho_F = rho_post.mean.detach().cpu().numpy()[::self.n_w, :]
+                rho_S = rho_post.variance.sqrt().detach().cpu().numpy()[::self.n_w, :]
 
         # #simplest 2d --> 2d test problem
         # def f(X):
@@ -126,8 +95,8 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
 
         if calc_gradient:
             jac_F = torch.autograd.functional.jacobian(
-                lambda x: -self.bo_model.posterior(
-                    x, posterior_transform=ExpectationPosteriorTransform(n_w=11)
+                lambda x: -model.posterior(
+                    x, posterior_transform=ExpectationPosteriorTransform(n_w=self.n_w)
                 ).mean.T,
                 X,
             )
@@ -142,7 +111,7 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
 
             if std:
                 jac_S = torch.autograd.functional.jacobian(
-                    lambda x: self.bo_model.posterior(x).variance.sqrt().T, X
+                    lambda x: model.posterior(x).variance.sqrt().T, X
                 )
                 dS = (
                     jac_S.diagonal(dim1=0, dim2=2)
