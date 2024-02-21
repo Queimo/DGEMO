@@ -16,7 +16,7 @@ def main():
 
     for problem in args.problem:
 
-        command = f'python visualization/visualize_hv.py \
+        command = f'python visualization/visualize_hv2.py \
             --problem {problem} \
             --n-seed {args.n_seed} --subfolder {args.subfolder}'
 
