@@ -47,8 +47,7 @@ class MOBOEXP(ALGO):
 
         # data normalization
         self.transformation.fit(self.X, self.Y)
-        X = self.transformation.do(self.X)
-        Y = self.Y
+        X,Y = self.transformation.do(self.X, self.Y)
         rho = self.rho
 
         # # build surrogate models
@@ -81,7 +80,7 @@ class MOBOEXP(ALGO):
             # Don't need to evaluate real problem because we don't have the data yet
             # evaluate prediction of X_next on surrogate model
             val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True, noise=True)
-            Y_next_pred_mean = val['F']
+            Y_next_pred_mean = self.transformation.undo(y=val['F'])
             Y_next = Y_next_pred_mean
             rho_next = val['rho_F']
             Y_next_pred_std = val['S']
@@ -98,7 +97,7 @@ class MOBOEXP(ALGO):
             rho_next = self.df.iloc[self.sample_num:self.sample_num+self.batch_size][["Peak Ratio_std", "Aspect Ratio_std", "C_ZnCl_std"]].values
             
         val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True)
-        Y_next_pred_mean =val['F']
+        Y_next_pred_mean = self.transformation.undo(y=val['F'])
         Y_next_pred_std = val['S']
         acquisition, _, _ = self.acquisition.evaluate(val)
 

@@ -3,7 +3,7 @@ from .problem import RiskyProblem
 
 class Peaks(RiskyProblem):
 
-    def __init__(self, sigma=.5, repeat_eval=10):
+    def __init__(self, sigma=4, repeat_eval=10):
         
         self.sigma = sigma
         self.repeat_eval = repeat_eval
@@ -26,7 +26,7 @@ class Peaks(RiskyProblem):
         return train_obj
     
     def _evaluate_rho(self, x):
-        train_rho = self.evaluate_repeat(x).std(axis=-1)
+        train_rho = self.evaluate_repeat(x).var(axis=-1)
         #check nan
         if np.isnan(train_rho).any():
             print("nan in rho")
@@ -169,7 +169,7 @@ class Peaks4D(RiskyProblem):
         return train_obj
     
     def _evaluate_rho(self, x):
-        train_rho = self.evaluate_repeat(x).var(axis=-1)
+        train_rho = self.evaluate_repeat(x).std(axis=-1)
         #check nan
         if np.isnan(train_rho).any():
             print("nan in rho")

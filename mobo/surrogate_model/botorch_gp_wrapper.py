@@ -71,7 +71,11 @@ class BoTorchSurrogateModel(SurrogateModel):
             X_torch.clone(), Y_torch.clone(), rho_torch.clone()
         )
         self._fit(X_torch, Y_torch, rho_torch)
-
+        # print state dict except input_transform
+        for i, m in enumerate(self.bo_model.models):
+            for p in m.named_parameters():
+                print(p)
+            
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization

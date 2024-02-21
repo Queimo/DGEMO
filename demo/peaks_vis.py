@@ -1,7 +1,7 @@
 import numpy as np
 
 # from ..problems import RiskyProblem
-
+from mobo.utils import calculate_var
 
 class Peaks:
 
@@ -282,18 +282,7 @@ if __name__ == "__main__":
     rho_real = prob.get_noise_var(X).reshape(n, n, 2)
     Y_noise = prob._evaluate_F(X).reshape(n, n, 2)
 
-    from scipy.stats import norm
-
-    def calculate_var(mean, std_dev, alpha=0.9):
-
-        # Calculate the z-score for the given alpha level
-        z_score = norm.ppf(alpha)
-
-        # Calculate mVaR for each variable
-        var = mean + z_score * std_dev
-        return var
-
-    var = calculate_var(Y.flatten(), rho_real.flatten())
+    var = calculate_var(Y.flatten(), variance=rho_real.flatten())
     var = var.reshape(n, n, 2)
 
     fig = go.Figure(

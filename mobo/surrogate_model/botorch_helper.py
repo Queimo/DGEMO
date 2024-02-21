@@ -110,11 +110,12 @@ class CustomHeteroskedasticSingleTaskGP(HeteroskedasticSingleTaskGP):
         validate_input_scaling(train_X=train_X, train_Y=train_Y, train_Yvar=train_Yvar)
         self._set_dimensions(train_X=train_X, train_Y=train_Y)
         noise_likelihood = GaussianLikelihood(
-            noise_prior=SmoothedBoxPrior(-3, 3, 0.5, transform=torch.log),
+            noise_prior=SmoothedBoxPrior(-3, 5, 0.5, transform=torch.log),
             batch_shape=self._aug_batch_shape,
-            noise_constraint=Interval(
-                MIN_INFERRED_NOISE_LEVEL, 10., transform=None, initial_value=1.0
-            ),
+            # noise_constraint=Interval(
+            #     MIN_INFERRED_NOISE_LEVEL, 10., transform=None, initial_value=1.0
+            # ),
+            noise_constraint=GreaterThan(MIN_INFERRED_NOISE_LEVEL, transform=None, initial_value=1.0),
         )
         noise_model = SingleTaskGP(
             train_X=train_X,

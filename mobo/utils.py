@@ -26,14 +26,20 @@ class Timer:
 from scipy.stats import norm
 
 
-def calculate_var(mean, std_dev, alpha=0.9):
+def calculate_var(mean, std=None, variance=None, alpha=0.9):
 
+    if std is None:
+        if variance is None:
+            raise ValueError("Either std or variance should be provided")
+        std = np.sqrt(variance)
+    
     # Calculate the z-score for the given alpha level
     z_score = norm.ppf(alpha)
 
     # Calculate mVaR for each variable
-    var = mean + z_score * std_dev
+    var = mean + z_score * std
     return var
+
 def find_pareto_front(Y, return_index=False):
     '''
     Find pareto front (undominated part) of the input performance data.
