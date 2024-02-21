@@ -1,18 +1,28 @@
-'''
+"""
 Factory for importing different components of the MOBO framework by name
-'''
+"""
+
 
 def get_surrogate_model(name):
-    from .surrogate_model import GaussianProcess, ThompsonSampling, BoTorchSurrogateModel, BoTorchSurrogateModelReapeat
-    
+    from .surrogate_model import (
+        GaussianProcess,
+        ThompsonSampling,
+        BoTorchSurrogateModel,
+        BoTorchSurrogateModelReapeat,
+        BoTorchSurrogateModelMean,
+        BoTorchSurrogateModelReapeatMean
+    )
+
     surrogate_model = {
-        'gp': GaussianProcess,
-        'ts': ThompsonSampling,
-        'botorchgp': BoTorchSurrogateModel,
-        'botorchgprepeat': BoTorchSurrogateModelReapeat,
+        "gp": GaussianProcess,
+        "ts": ThompsonSampling,
+        "botorchgp": BoTorchSurrogateModel,
+        "botorchgprepeat": BoTorchSurrogateModelReapeat,
+        "botorchgpmean": BoTorchSurrogateModelMean,
+        "botorchgprepeatmean": BoTorchSurrogateModelReapeatMean,
     }
 
-    surrogate_model['default'] = GaussianProcess
+    surrogate_model["default"] = GaussianProcess
 
     return surrogate_model[name]
 
@@ -21,67 +31,84 @@ def get_acquisition(name):
     from .acquisition import IdentityFunc, PI, EI, UCB
 
     acquisition = {
-        'identity': IdentityFunc,
-        'pi': PI,
-        'ei': EI,
-        'ucb': UCB,
+        "identity": IdentityFunc,
+        "pi": PI,
+        "ei": EI,
+        "ucb": UCB,
     }
 
-    acquisition['default'] = IdentityFunc
+    acquisition["default"] = IdentityFunc
 
     return acquisition[name]
 
 
 def get_solver(name):
-    from .solver import NSGA2Solver, MOEADSolver, ParetoDiscoverySolver, \
-    ParEGOSolver, PSLSolver, qNEHVISolver, qEHVISolver, RAqNEHVISolver, \
-    RAPSLSolver, MARSSolver, RAqLogNEHVISolver
+    from .solver import (
+        NSGA2Solver,
+        MOEADSolver,
+        ParetoDiscoverySolver,
+        ParEGOSolver,
+        PSLSolver,
+        qNEHVISolver,
+        qEHVISolver,
+        RAqNEHVISolver,
+        RAPSLSolver,
+        MARSSolver,
+        RAqLogNEHVISolver,
+    )
 
     solver = {
-        'nsga2': NSGA2Solver,
-        'moead': MOEADSolver,
-        'discovery': ParetoDiscoverySolver,
-        'parego': ParEGOSolver,
-        'psl': PSLSolver,
-        'rapsl': RAPSLSolver,
-        'qnehvi': qNEHVISolver,
-        'qehvi': qEHVISolver,
-        'raqnehvi': RAqNEHVISolver,
-        'mars': MARSSolver,
-        'raqlognehvi': RAqLogNEHVISolver,
+        "nsga2": NSGA2Solver,
+        "moead": MOEADSolver,
+        "discovery": ParetoDiscoverySolver,
+        "parego": ParEGOSolver,
+        "psl": PSLSolver,
+        "rapsl": RAPSLSolver,
+        "qnehvi": qNEHVISolver,
+        "qehvi": qEHVISolver,
+        "raqnehvi": RAqNEHVISolver,
+        "mars": MARSSolver,
+        "raqlognehvi": RAqLogNEHVISolver,
     }
 
-    solver['default'] = NSGA2Solver
+    solver["default"] = NSGA2Solver
 
     return solver[name]
 
 
 def get_selection(name):
-    from .selection import HVI, Uncertainty, Random, DGEMOSelect, MOEADSelect, IdentitySelect
+    from .selection import (
+        HVI,
+        Uncertainty,
+        Random,
+        DGEMOSelect,
+        MOEADSelect,
+        IdentitySelect,
+    )
 
     selection = {
-        'hvi': HVI,
-        'uncertainty': Uncertainty,
-        'random': Random,
-        'dgemo': DGEMOSelect,
-        'moead': MOEADSelect,
-        'identity': IdentitySelect,
+        "hvi": HVI,
+        "uncertainty": Uncertainty,
+        "random": Random,
+        "dgemo": DGEMOSelect,
+        "moead": MOEADSelect,
+        "identity": IdentitySelect,
     }
 
-    selection['default'] = HVI
+    selection["default"] = HVI
 
     return selection[name]
 
 
 def init_from_config(config, framework_args):
-    '''
+    """
     Initialize each component of the MOBO framework from config
-    '''
+    """
     init_func = {
-        'surrogate': get_surrogate_model,
-        'acquisition': get_acquisition,
-        'selection': get_selection,
-        'solver': get_solver,
+        "surrogate": get_surrogate_model,
+        "acquisition": get_acquisition,
+        "selection": get_selection,
+        "solver": get_solver,
     }
 
     framework = {}
@@ -92,7 +119,7 @@ def init_from_config(config, framework_args):
             name = kwargs[key]
         else:
             # initialize from config specifications, if certain keys are not provided, use default settings
-            name = config[key] if key in config else 'default'
+            name = config[key] if key in config else "default"
         framework[key] = func(name)(**kwargs)
 
     return framework

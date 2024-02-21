@@ -1,4 +1,4 @@
 from .gaussian_process import GaussianProcess
 from .thompson_sampling import ThompsonSampling
-from .botorch_gp_wrapper import BoTorchSurrogateModel
-from .botorch_gp_wrapper_repeat import BoTorchSurrogateModelReapeat
+from .botorch_gp_wrapper import BoTorchSurrogateModel, BoTorchSurrogateModelMean
+from .botorch_gp_wrapper_repeat import BoTorchSurrogateModelReapeat, BoTorchSurrogateModelReapeatMean

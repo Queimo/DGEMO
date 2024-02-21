@@ -1,3 +1,4 @@
+from typing import List
 import numpy as np
 import torch
 
@@ -7,49 +8,23 @@ tkwargs = {
 }
 
 from botorch.models.gp_regression import (
-    FixedNoiseGP,
     HeteroskedasticSingleTaskGP,
     SingleTaskGP,
 )
 
-from botorch.models.deterministic import GenericDeterministicModel
-
 from botorch.models.model_list_gp_regression import ModelListGP
-from botorch.models.model import ModelList
-from botorch.models.transforms.outcome import Standardize
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
 from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
 from gpytorch.likelihoods import LikelihoodList
 from botorch.fit import fit_gpytorch_mll, fit_gpytorch_model, fit_gpytorch_mll_torch
-
-import botorch
+from botorch.models.transforms.outcome import Standardize
 
 from mobo.surrogate_model.base import SurrogateModel
-from mobo.utils import safe_divide
 
-from linear_operator.settings import _fast_solves
+import gpytorch
+import torch
 
-
-from botorch.models.transforms.input import InputPerturbation
-from botorch.models.deterministic import DeterministicModel
-
-
-class DeterministicModel3(DeterministicModel):
-
-    def __init__(self, num_outputs, input_transform=None, **kwargs):
-        super().__init__()
-        self.input_transform = input_transform
-
-    def forward(self, X: torch.Tensor) -> torch.Tensor:
-        y = X[:, 1].unsqueeze(-1)
-        return y
-
-
-model3 = DeterministicModel3(
-    num_outputs=1,
-    input_transform=InputPerturbation(torch.zeros((11, 2), **tkwargs)),
-)
-
+from .botorch_helper import ZeroKernel, CustomHeteroskedasticSingleTaskGP
 
 class BoTorchSurrogateModel(SurrogateModel):
     """
@@ -100,20 +75,11 @@ class BoTorchSurrogateModel(SurrogateModel):
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
-        # train_y_var = self.real_problem.evaluate(train_x).to(**tkwargs).var(dim=-1)
         train_y_var = train_rho + 1e-6
-        # model = HeteroskedasticSingleTaskGP(
-        #     train_X=train_x,
-        #     train_Y=train_y_mean,
-        #     train_Yvar=train_y_var,
-        #     input_transform=self.input_transform,
-        #     outcome_transform=Standardize(m=self.n_obj),
-        # )
-        # mll = ExactMarginalLogLikelihood(model.likelihood, model)
         
         models = []
         for i in range(self.n_obj):
-            model = HeteroskedasticSingleTaskGP(
+            model = CustomHeteroskedasticSingleTaskGP(
                 train_X=train_x,
                 train_Y=train_y_mean[..., i:i+1],
                 train_Yvar=train_y_var[..., i:i+1],
@@ -169,9 +135,10 @@ class BoTorchSurrogateModel(SurrogateModel):
                 rho_F = np.zeros_like(F)
                 rho_S = np.zeros_like(S)
                 for i, likelihood in enumerate(model.likelihood.likelihoods):
-                    rho_post = likelihood.noise_covar.noise_model.posterior(X)
-                    rho_F[:, i] = rho_post.mean.detach().cpu().squeeze(-1).numpy()
-                    rho_S[:, i] = rho_post.variance.sqrt().detach().cpu().squeeze(-1).numpy()
+                    if hasattr(likelihood.noise_covar, "noise_model"):
+                        rho_post = likelihood.noise_covar.noise_model.posterior(X)
+                        rho_F[:, i] = rho_post.mean.detach().cpu().squeeze(-1).numpy()
+                        rho_S[:, i] = rho_post.variance.sqrt().detach().cpu().squeeze(-1).numpy()
             else:
                 rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
                 rho_F = rho_post.mean.detach().cpu().numpy()
@@ -226,3 +193,64 @@ class BoTorchSurrogateModel(SurrogateModel):
         }
 
         return out
+
+class BoTorchSurrogateModelMean(BoTorchSurrogateModel):
+
+    # last objective is the "deterministic" one
+    
+    def initialize_model(self, train_x, train_y, train_rho=None):
+        # define models for objective and constraint
+        train_y_mean = -train_y  # negative because botorch assumes maximization
+        train_y_var = train_rho + 1e-10
+        
+        models = []
+        for i in range(self.n_obj-1):
+            model = CustomHeteroskedasticSingleTaskGP(
+                train_X=train_x,
+                train_Y=train_y_mean[..., i:i+1],
+                train_Yvar=train_y_var[..., i:i+1],
+                input_transform=self.input_transform,
+                outcome_transform=Standardize(m=1),
+            )            
+            
+            models.append(model)
+        
+        model = ModelListGP(*models)
+        mll = SumMarginalLogLikelihood(model.likelihood, model)
+        
+        class LinearMean(gpytorch.means.Mean):
+            def __init__(self):        
+                super(LinearMean, self).__init__()
+                
+            def forward(self, x):
+                """Your forward method."""
+                return x[..., 1]
+            
+        model_mean = SingleTaskGP(
+            train_X=train_x,
+            train_Y=train_y_mean[..., -1:],
+            train_Yvar=train_y_var[..., -1:]*0.0,
+            likelihood= gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-10)),
+            input_transform=self.input_transform,
+            # outcome_transform=Standardize(m=1),
+            mean_module=LinearMean(),
+            covar_module=ZeroKernel(),
+        )
+        model_mean.likelihood.noise_covar.noise = 1e-10
+        
+        models.append(model_mean)
+        model = ModelListGP(*models)
+        
+        if self.state_dict is not None:
+            try:
+                #replace each input_transform with the one from the new model
+                for i, m in enumerate(model.models):
+                    self.bo_model.models[i].input_transform = m.input_transform 
+                self.state_dict = self.bo_model.state_dict()
+                
+                model.load_state_dict(self.state_dict, strict=False)
+            except Exception as e:
+                print(e)
+                print("failed to load state dict")
+
+        return mll, model

@@ -116,10 +116,26 @@ class qNEHVI(MOBO):
         "solver": "qnehvi",
         "selection": "identity",
     }
+    
+class qNEHVIdet(MOBO):
+    config = {
+        "surrogate": "botorchgpmean",
+        "acquisition": "identity",
+        "solver": "qnehvi",
+        "selection": "identity",
+    }
 
 class MARS(MOBO):
     config = {
         "surrogate": "botorchgprepeat",
+        "acquisition": "identity",
+        "solver": "mars",
+        "selection": "identity",
+    }
+
+class MARSdet(MOBO):
+    config = {
+        "surrogate": "botorchgprepeatmean",
         "acquisition": "identity",
         "solver": "mars",
         "selection": "identity",
@@ -136,6 +152,14 @@ class RAqNEHVI(MOBO):
 class RAqLogNEHVI(MOBO):
     config = {
         "surrogate": "botorchgprepeat",
+        "acquisition": "identity",
+        "solver": "raqlognehvi",
+        "selection": "identity",
+    }
+
+class RAqLogNEHVIdet(MOBO):
+    config = {
+        "surrogate": "botorchgprepeatmean",
         "acquisition": "identity",
         "solver": "raqlognehvi",
         "selection": "identity",
@@ -165,9 +189,12 @@ def get_algorithm(name):
         "pslbot": PSLbot, # botorch gp
         "rapslbot": RAPSLbot,
         "qnehvi": qNEHVI,
+        "qnehvidet": qNEHVIdet,
         "qehvi": qEHVI,
         "mars": MARS,
+        "marsdet": MARSdet,
         "raqnehvi": RAqNEHVI,
         "raqlognehvi": RAqLogNEHVI,
+        "raqlognehvidet": RAqLogNEHVIdet,
     }
     return algo[name]
