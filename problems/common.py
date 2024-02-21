@@ -126,7 +126,7 @@ def build_problem(name, n_var, n_obj, n_init_sample, n_process=1):
             pareto_front = None
 
     # get initial samples
-    if name == 'exp':
+    if 'exp' in name:
         X_init = problem.X[:n_init_sample]
         Y_init = problem.Y[:n_init_sample]
         rho_init = problem.rho[:n_init_sample]

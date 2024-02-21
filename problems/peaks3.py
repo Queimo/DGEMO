@@ -83,7 +83,8 @@ class Peaks3(RiskyProblem):
         x1, x2 = X[:, 0], X[:, 1]
         y1 = self.brannin_function(x1, x2)
         y2 = self.styblinski_tang_function(x1, x2)
-        y3 = -x2
+        # y3 = -x2
+        y3 = -np.array([0.5*x2 * x1, x2]).min(axis=0) * x2
         
         return np.stack([y1, y2, y3], axis=-1)
         

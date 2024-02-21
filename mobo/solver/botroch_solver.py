@@ -41,6 +41,7 @@ tkwargs = {
     "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 }
 SMOKE_TEST = os.environ.get("SMOKE_TEST")
+# print("SMOKE_TEST", SMOKE_TEST)
 NUM_RESTARTS = 10 if not SMOKE_TEST else 2
 RAW_SAMPLES = 512 if not SMOKE_TEST else 4
 MC_SAMPLES = 128 if not SMOKE_TEST else 16
@@ -189,12 +190,13 @@ class RAqNEHVISolver(BoTorchSolver):
 class RAqLogNEHVISolver(RAqNEHVISolver):
      
     def __init__(self, *args, **kwargs):
-        self.hvi_class = qLogNEHVI
-
         super().__init__(*args, **kwargs)
+        self.hvi_class = qLogNEHVI
 
 
 class qNEI(qNoisyExpectedImprovement):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def _get_samples_and_objectives(self, X):
         r"""Compute samples at new points, using the cached root decomposition.
@@ -212,6 +214,7 @@ class qNEI(qNoisyExpectedImprovement):
         posterior = self.model.posterior(
             X_full, posterior_transform=self.posterior_transform, observation_noise=True
         )
+        
         if not self._cache_root:
             samples_full = super().get_posterior_samples(posterior)
             samples = samples_full[..., -q:, :]
@@ -244,9 +247,10 @@ class MARSSolver(BoTorchSolver):
 
         ref_point = get_nehvi_ref_point(
             model=model,
-            X_baseline=torch.from_numpy(X).to(**tkwargs),
+            X_baseline=X_baseline,
             objective=MVaR(n_w=self.n_w, alpha=self.alpha),
         )
+        
         print("mvar_ref_point", ref_point)
 
         sampler = SobolQMCNormalSampler(sample_shape=torch.Size([MC_SAMPLES]))
