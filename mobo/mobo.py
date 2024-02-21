@@ -8,6 +8,7 @@ from .utils import (
 )
 from .factory import init_from_config
 from .transformation import StandardTransform
+from botorch.utils.transforms import normalize, unnormalize
 
 """
 Main algorithm framework for Multi-Objective Bayesian Optimization
@@ -38,6 +39,7 @@ class MOBO:
         self.transformation = StandardTransform(
             bounds
         )  # data normalization for surrogate model fitting
+        self.bounds = bounds
 
         # framework components
         framework_args["surrogate"]["n_var"] = self.n_var  # for surrogate fitting
@@ -110,7 +112,8 @@ class MOBO:
 
         # data normalization
         self.transformation.fit(self.X, self.Y)
-        X, Y = self.transformation.do(self.X, self.Y)
+        X = self.transformation.do(self.X)
+        Y = self.Y
         rho = self.rho
 
         # build surrogate models
@@ -141,7 +144,7 @@ class MOBO:
         Y_next, rho_next = self.real_problem.evaluate(X_next, return_values_of=['F', 'rho'])
         # evaluate prediction of X_next on surrogate model
         val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True)
-        Y_next_pred_mean = self.transformation.undo(y=val['F'])
+        Y_next_pred_mean = val['F']
         Y_next_pred_std = val['S']
         acquisition, _, _ = self.acquisition.evaluate(val)
 

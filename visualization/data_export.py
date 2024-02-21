@@ -44,8 +44,8 @@ class DataExport:
         if args.ref_point is None:
             args.ref_point = optimizer.ref_point_handler.get_ref_point()
         hv_value = calc_hypervolume(pfront, ref_point=args.ref_point)
-        
-        #compute MVaR HV
+
+        # compute MVaR HV
         if not hasattr(self.optimizer.solver, "alpha"):
             alpha = 0.9
         else:
@@ -55,7 +55,7 @@ class DataExport:
         mvar_pfront, mvar_pidx = find_pareto_front(mvar, return_index=True)
         mvar_pset = X[mvar_pidx]
         mvar_hv_value = calc_hypervolume(mvar_pfront, ref_point=args.ref_point)
-        
+
         # init data frame
         column_names = ["iterID"]
         d1 = {"iterID": np.zeros(n_samples, dtype=int)}
@@ -78,12 +78,11 @@ class DataExport:
             d1[col_name] = rho[:, i]
             col_name = f"mvar_f{i + 1}"
             d1[col_name] = mvar[:, i]
-            
+
             obj_name = f"Pareto_f{i + 1}"
             d2[obj_name] = pfront[:, i]
             col_name = f"Pareto_mvar_f{i + 1}"
-            d5[col_name] = mvar_pfront[:, i] 
-            
+            d5[col_name] = mvar_pfront[:, i]
 
         # predicted performance
         for i in range(self.n_obj):
@@ -103,7 +102,9 @@ class DataExport:
         self.export_approx_pareto = pd.DataFrame(
             columns=column_names
         )  # export pareto approximation data
-        self.export_approx_all = pd.DataFrame(columns=["iterID"])  # export pareto approximation data
+        self.export_approx_all = pd.DataFrame(
+            columns=["iterID"]
+        )  # export pareto approximation data
         self.export_mvar_pareto = pd.DataFrame(data=d5)  # export pareto data
 
         self.has_family = (
@@ -111,7 +112,9 @@ class DataExport:
             and self.optimizer.selection.has_family
         )
 
-    def update(self, X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acquisition, rho_next):
+    def update(
+        self, X_next, Y_next, Y_next_pred_mean, Y_next_pred_std, acquisition, rho_next
+    ):
         """
         For each algorithm iteration adds data for visualization.
         Input:
@@ -129,12 +132,12 @@ class DataExport:
         pset = self.optimizer.status["pset"]
         pfront = self.optimizer.status["pfront"]
         hv_value = self.optimizer.status["hv"]
-        
+
         mvar = calculate_var(Y_next, rho_next, self.alpha)
-        mvar_pfront = self.optimizer.status['mvar_pfront']
-        mvar_pset = self.optimizer.status['mvar_pset']
-        mvar_hv_value = self.optimizer.status['mvar_hv']
-        
+        mvar_pfront = self.optimizer.status["mvar_pfront"]
+        mvar_pset = self.optimizer.status["mvar_pset"]
+        mvar_hv_value = self.optimizer.status["mvar_hv"]
+
         # Y_next_pred_mean = self.optimizer.status['Y_next_pred_mean']
         # Y_next_pred_std = self.optimizer.status['Y_next_pred_std']
         # acquisition = self.optimizer.status['acquisition']
@@ -164,7 +167,7 @@ class DataExport:
             d1[col_name] = rho_next[:, i]
             col_name = f"mvar_f{i + 1}"
             d1[col_name] = mvar[:, i]
-            
+
             d2["Pareto_" + col_name] = pfront[:, i]
             d5["Pareto_mvar_f{i + 1}"] = mvar_pfront[:, i]
 
@@ -204,9 +207,7 @@ class DataExport:
             approx_pset = self.optimizer.solver.solution["x"]
             val = self.optimizer.surrogate_model.evaluate(approx_pset)
             approx_pfront = val["F"]
-            approx_pset, approx_pfront = self.transformation.undo(
-                approx_pset, approx_pfront
-            )
+            approx_pset = self.transformation.undo(approx_pset)
 
             # find undominated
             approx_pfront, pidx = find_pareto_front(approx_pfront, return_index=True)
@@ -223,50 +224,52 @@ class DataExport:
                 d3[f"Pareto_f{i + 1}"] = approx_pfront[:, i]
 
             d3["ParetoFamily"] = np.zeros(approx_front_samples)
-            
-    
-            
-            #create dataframe from val dict. If field in val is 2d array, then create columns for each element in array
+
+            # create dataframe from val dict. If field in val is 2d array, then create columns for each element in array
             d4 = {}
-            if pset.shape[1] == 2:
-                n_grid = 25
-                x2 = np.linspace(0, 1, n_grid)
-                x1 = np.linspace(0, 1, n_grid)
-                x1_mesh, x2_mesh = np.meshgrid(x1, x2)
-                x_mesh = np.vstack((x1_mesh.flatten(), x2_mesh.flatten())).T
-                val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True)
-                val["mvar_F"] = calculate_var(val["F"], val["rho_F"], self.alpha)
-                
-                for key in val:
-                    if val[key] is None:
-                        continue
-                    if val[key].ndim == 1:
-                        d4[key] = val[key]
-                    else:
-                        for i in range(val[key].shape[1]):
-                            col_name = f"{key}_{i + 1}"
-                            d4[col_name] = val[key][:, i]
-                
-                # add iteration id and x1, x2 columns
-                d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
-                
-                X_mesh, Y_mesh = self.transformation.undo(
-                    x_mesh, val["F"]
+            n_grid = 25
+            x2 = np.linspace(0, 1, n_grid)
+            x1 = np.linspace(0, 1, n_grid)
+            x1_mesh, x2_mesh = np.meshgrid(x1, x2)
+            x_mesh = np.vstack((x1_mesh.flatten(), x2_mesh.flatten())).T
+            if pset.shape[1] > 2:
+                # other vars constant 0.5
+                x_mesh = np.hstack(
+                    (x_mesh, np.full((n_grid**2, pset.shape[1] - 2), 0.5))
                 )
-                
-                _, mvar_F_mesh = self.transformation.undo(x_mesh, val["mvar_F"])
-                
-                d4["F_1"] = Y_mesh[:, 0]
-                d4["F_2"] = Y_mesh[:, 1]
-                
-                d4["mvar_F_1"] = mvar_F_mesh[:, 0]
-                d4["mvar_F_2"] = mvar_F_mesh[:, 1]
-                
-                d4["x1"] = X_mesh[:, 0]
-                d4["x2"] = X_mesh[:, 1]
-                                           
-            df4 = pd.DataFrame(data=d4)
-        df5 = pd.DataFrame(data=d5)            
+
+            val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True)
+            val["mvar_F"] = calculate_var(val["F"], val["rho_F"], self.alpha)
+
+            for key in val:
+                if val[key] is None:
+                    continue
+                if val[key].ndim == 1:
+                    d4[key] = val[key]
+                else:
+                    for i in range(val[key].shape[1]):
+                        col_name = f"{key}_{i + 1}"
+                        d4[col_name] = val[key][:, i]
+
+            # add iteration id and x1, x2 columns
+            d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
+
+            X_mesh = self.transformation.undo(x_mesh)
+            Y_mesh = val["F"]
+
+            mvar_F_mesh = val["mvar_F"]
+
+            d4["F_1"] = Y_mesh[:, 0]
+            d4["F_2"] = Y_mesh[:, 1]
+
+            d4["mvar_F_1"] = mvar_F_mesh[:, 0]
+            d4["mvar_F_2"] = mvar_F_mesh[:, 1]
+
+            d4["x1"] = X_mesh[:, 0]
+            d4["x2"] = X_mesh[:, 1]
+
+        df4 = pd.DataFrame(data=d4)
+        df5 = pd.DataFrame(data=d5)
 
         df1 = pd.DataFrame(data=d1)
         df2 = pd.DataFrame(data=d2)
@@ -276,11 +279,17 @@ class DataExport:
         # self.export_approx_pareto = self.export_approx_pareto.append(
         #     df3, ignore_index=True
         # )
-        
+
         self.export_data = pd.concat([self.export_data, df1], ignore_index=True, axis=0)
-        self.export_pareto = pd.concat([self.export_pareto, df2], ignore_index=True, axis=0)
-        self.export_approx_pareto = pd.concat([self.export_approx_pareto, df3], ignore_index=True, axis=0)
-        self.export_approx_all = pd.concat([self.export_approx_all, df4], ignore_index=True, axis=0)
+        self.export_pareto = pd.concat(
+            [self.export_pareto, df2], ignore_index=True, axis=0
+        )
+        self.export_approx_pareto = pd.concat(
+            [self.export_approx_pareto, df3], ignore_index=True, axis=0
+        )
+        self.export_approx_all = pd.concat(
+            [self.export_approx_all, df4], ignore_index=True, axis=0
+        )
 
     def save_psmodel(self):
         """
@@ -294,7 +303,12 @@ class DataExport:
         """
         Export data to csv files.
         """
-        dataframes = [self.export_data, self.export_pareto, self.export_approx_pareto, self.export_approx_all]
+        dataframes = [
+            self.export_data,
+            self.export_pareto,
+            self.export_approx_pareto,
+            self.export_approx_all,
+        ]
         filenames = [
             "EvaluatedSamples",
             "ParetoFrontEvaluated",
@@ -313,17 +327,17 @@ class DataExport:
         problem_dir = os.path.join(
             self.result_dir, "..", ".."
         )  # result/problem/subfolder/
-        
-        #if truefront_list is not list
+
+        # if truefront_list is not list
         if not isinstance(truefront_list, list):
             truefront_list = [truefront_list]
-        
-        for index,truefront in enumerate(truefront_list):
+
+        for index, truefront in enumerate(truefront_list):
             filepath = os.path.join(problem_dir, f"TrueParetoFront{index}.csv")
 
             if os.path.exists(filepath):
                 continue
-            
+
             d = {}
             for i in range(truefront.shape[1]):
                 col_name = f"f{i + 1}"
@@ -341,7 +355,6 @@ class DataExport:
         data["hypervolume"] = self.export_data["Hypervolume_indicator"].iloc[-1]
 
         return data
-
 
     def wand_final_plot(self, args=None):
         """
@@ -363,14 +376,13 @@ class DataExport:
         ref_point = self.optimizer.ref_point_handler.get_ref_point()
         paretoGP_list.append(self.export_approx_pareto)
 
-        
         true_front_file = os.path.join(problem_dir, "TrueParetoFront0.csv")
         has_true_front = os.path.exists(true_front_file)
         if has_true_front:
             df_truefront = pd.read_csv(true_front_file)
-            
-        #get all true front files
-        tf_paths = pathlib.Path(problem_dir).glob('TrueParetoFront*.csv')
+
+        # get all true front files
+        tf_paths = pathlib.Path(problem_dir).glob("TrueParetoFront*.csv")
         df_truefront_list = [pd.read_csv(str(tf_path)) for tf_path in tf_paths]
 
         n_var = len(
@@ -705,16 +717,16 @@ class DataExport:
 
         return fig[0]
 
-
     def wand_final_plot2(self, args=None):
         """
         Plot data for wandb logging.
         """
         # get argument values and initializations
 
-        
         def get_data_of_step(pareto_approx_df, selected_iteration):
-            filtered_data = pareto_approx_df[pareto_approx_df["iterID"] == selected_iteration]
+            filtered_data = pareto_approx_df[
+                pareto_approx_df["iterID"] == selected_iteration
+            ]
             return filtered_data
 
         n_algo = 1
@@ -730,7 +742,6 @@ class DataExport:
         paretoEval_list.append(self.export_pareto)
         ref_point = self.optimizer.ref_point_handler.get_ref_point()
         paretoGP_list.append(self.export_approx_pareto)
-
 
         true_front_file = os.path.join(problem_dir, "TrueParetoFront0.csv")
         has_true_front = os.path.exists(true_front_file)
@@ -764,8 +775,8 @@ class DataExport:
             for df in data_list + paretoEval_list + paretoGP_list + [approx_all_df]:
                 df["hovertext"] = df.apply(makeLabel, axis=1)
             # Maximum number of iterations to display
-            
-            max_iterations = approx_all_df["iterID"].unique().shape[0] +1
+
+            max_iterations = approx_all_df["iterID"].unique().shape[0] + 1
 
             # get one iteration to check length of data and take square root
             approx_all_i = get_data_of_step(approx_all_df, 1)
@@ -792,7 +803,9 @@ class DataExport:
                 paretoEval_trimmed = paretoEval_list[kk][
                     paretoEval_list[kk]["iterID"] == iteration
                 ]
-                paretoGP_trimmed = paretoGP_list[kk][paretoGP_list[kk]["iterID"] == iteration]
+                paretoGP_trimmed = paretoGP_list[kk][
+                    paretoGP_list[kk]["iterID"] == iteration
+                ]
 
                 # Data reshaping remains the same
                 x = approx_all_i["x1"].values.reshape((n_grid, n_grid))
@@ -808,7 +821,7 @@ class DataExport:
                             showscale=False,
                             visible=(iteration == 1),
                             zmin=min(approx_all_i[f"F_{i}"]),
-                            zmax=max(approx_all_i[f"F_{i}"])
+                            zmax=max(approx_all_i[f"F_{i}"]),
                         ),
                         row=i,
                         col=1,
@@ -825,24 +838,26 @@ class DataExport:
                             showscale=False,
                             visible=(iteration == 1),
                             zmin=min(approx_all_i[f"S_{i}"]),
-                            zmax=max(approx_all_i[f"S_{i}"])
+                            zmax=max(approx_all_i[f"S_{i}"]),
                         ),
                         row=i,
                         col=2,
                     )
-                    
+
                     # add rho_1 rho_2
                     if hasattr(approx_all_i, f"rho_F_{i}"):
                         fig.add_trace(
                             go.Contour(
                                 x=x[0],
                                 y=y[:, 0],
-                                z=approx_all_i[f"rho_F_{i}"].values.reshape((n_grid, n_grid)),
+                                z=approx_all_i[f"rho_F_{i}"].values.reshape(
+                                    (n_grid, n_grid)
+                                ),
                                 colorscale="Viridis",
                                 showscale=False,
                                 visible=(iteration == 1),
                                 zmin=min(approx_all_i[f"rho_F_{i}"]),
-                                zmax=np.percentile(approx_all_i[f"rho_F_{i}"], 90)
+                                zmax=np.percentile(approx_all_i[f"rho_F_{i}"], 90),
                             ),
                             row=i,
                             col=3,
@@ -855,7 +870,7 @@ class DataExport:
                                 x=data_trimmed["x1"],
                                 y=data_trimmed["x2"],
                                 mode="markers",
-                                hovertext=data_trimmed['hovertext'],
+                                hovertext=data_trimmed["hovertext"],
                                 hoverinfo="text",
                                 visible=(iteration == 1),
                                 marker=dict(
@@ -868,13 +883,13 @@ class DataExport:
                             row=j,
                             col=i,
                         )
-                        
+
                         fig.add_trace(
                             go.Scatter(
                                 x=firstsamples["x1"],
                                 y=firstsamples["x2"],
                                 mode="markers",
-                                hovertext=firstsamples['hovertext'],
+                                hovertext=firstsamples["hovertext"],
                                 hoverinfo="text",
                                 visible=(iteration == 1),
                                 marker=dict(
@@ -888,14 +903,13 @@ class DataExport:
                             col=i,
                         )
 
-
                         # data proposed
                         fig.add_trace(
                             go.Scatter(
                                 x=data_proposed["x1"],
                                 y=data_proposed["x2"],
                                 mode="markers",
-                                hovertext=data_proposed['hovertext'],
+                                hovertext=data_proposed["hovertext"],
                                 hoverinfo="text",
                                 visible=(iteration == 1),
                                 marker=dict(
@@ -926,10 +940,9 @@ class DataExport:
                             row=j,
                             col=i,
                         )
-                        
-                        #paretoGP_trimmed low opacity orange circles
-                        
-                        
+
+                        # paretoGP_trimmed low opacity orange circles
+
                         fig.add_trace(
                             go.Scatter(
                                 x=paretoGP_trimmed["x1"],
@@ -937,16 +950,13 @@ class DataExport:
                                 mode="markers",
                                 visible=(iteration == 1),
                                 marker=dict(
-                                    size=4,
-                                    color="orange",
-                                    symbol="circle",
-                                    opacity=0.9
+                                    size=4, color="orange", symbol="circle", opacity=0.9
                                 ),
                             ),
                             row=j,
                             col=i,
                         )
-                                
+
             # Slider setup (similar to your original setup)
             steps = []
             for iteration in range(1, max_iterations):
@@ -957,7 +967,9 @@ class DataExport:
                             "visible": [
                                 iteration == i
                                 for i in range(1, max_iterations)
-                                for j in range(int(len(fig.data) / (max_iterations - 1)))
+                                for j in range(
+                                    int(len(fig.data) / (max_iterations - 1))
+                                )
                             ]
                         },
                         {"title": f"Slider switched to iteration: {iteration}"},
@@ -967,7 +979,10 @@ class DataExport:
 
             sliders = [
                 dict(
-                    active=0, currentvalue={"prefix": "Iteration: "}, pad={"t": 50}, steps=steps
+                    active=0,
+                    currentvalue={"prefix": "Iteration: "},
+                    pad={"t": 50},
+                    steps=steps,
                 )
             ]
 

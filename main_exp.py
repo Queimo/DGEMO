@@ -22,16 +22,21 @@ from mobo.factory import init_from_config
 from mobo.transformation import StandardTransform
 import wandb
 
-from mobo.algorithms import RAqNEHVI, qNEHVI, MARS, RAqLogNEHVI
+from mobo.algorithms import RAqNEHVI, qNEHVI, MARS, RAqLogNEHVI, MARSdet, qNEHVIdet
 
-class MOBOEXP(RAqNEHVI):
+# algo_name = 'raqlognehvidet'
+algo_name = 'marsdet'
+# algo_name = 'mars'
+ALGO = get_algorithm(algo_name)
+
+class MOBOEXP(ALGO):
     """
     Base class of algorithm framework, inherit this class with different configs to create new algorithm classes
     """
 
     def __init__(self, problem, n_iter, ref_point_handler, framework_args, batch_size=6):
         
-        self.df = problem.df_mean_std.iloc[:18,:]
+        self.df = problem.df_mean_std
         self.batch_size = batch_size
         
         super().__init__(problem, n_iter, ref_point_handler, framework_args)
@@ -42,7 +47,8 @@ class MOBOEXP(RAqNEHVI):
 
         # data normalization
         self.transformation.fit(self.X, self.Y)
-        X, Y = self.transformation.do(self.X, self.Y)
+        X = self.transformation.do(self.X)
+        Y = self.Y
         rho = self.rho
 
         # # build surrogate models
@@ -75,9 +81,9 @@ class MOBOEXP(RAqNEHVI):
             # Don't need to evaluate real problem because we don't have the data yet
             # evaluate prediction of X_next on surrogate model
             val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True, noise=True)
-            Y_next_pred_mean = self.transformation.undo(y=val['F'])
+            Y_next_pred_mean = val['F']
             Y_next = Y_next_pred_mean
-            rho_next = self.transformation.undo(y=val['rho_F'])
+            rho_next = val['rho_F']
             Y_next_pred_std = val['S']
             acquisition, _, _ = self.acquisition.evaluate(val)
         
@@ -92,7 +98,7 @@ class MOBOEXP(RAqNEHVI):
             rho_next = self.df.iloc[self.sample_num:self.sample_num+self.batch_size][["Peak Ratio_std", "Aspect Ratio_std", "C_ZnCl_std"]].values
             
         val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True)
-        Y_next_pred_mean = self.transformation.undo(y=val['F'])
+        Y_next_pred_mean =val['F']
         Y_next_pred_std = val['S']
         acquisition, _, _ = self.acquisition.evaluate(val)
 
@@ -134,6 +140,7 @@ def run_experiment(args, framework_args):
     args.ref_point = ref_point_handler.get_ref_point(is_botorch=False)
 
     # initialize optimizer
+    
     optimizer = MOBOEXP(
         problem, args.n_iter, ref_point_handler, framework_args, batch_size=args.batch_size
     )
@@ -174,12 +181,12 @@ if __name__ == "__main__":
 
     args, framework_args = get_args()
     
-    args.algo = 'raqnehvi'
-    args.problem = 'exp'
-    args.n_iter = 2
+    args.algo = algo_name
+    args.problem = 'exp4d'
+    args.n_iter = 1
     args.n_init_sample = 12
     args.batch_size = 6
-    args.subfolder = 'MVARmodel'
+    args.subfolder = 'optimization_2'
     framework_args["solver"]["batch_size"] = args.batch_size
     framework_args["selection"]["batch_size"] = args.batch_size
 
