@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
-from mobo.utils import find_pareto_front, calc_hypervolume
+from mobo.utils import find_pareto_front, calc_hypervolume, calculate_var
 from utils import get_result_dir
 import wandb
 import os, sys
@@ -14,7 +14,6 @@ from .arguments import get_vis_args
 from .utils import get_problem_dir, get_algo_names, defaultColors
 import yaml
 import pathlib
-from .utils import calculate_var
 
 """
 Export csv files for external visualization.
@@ -51,7 +50,7 @@ class DataExport:
         else:
             alpha = self.optimizer.solver.alpha
         self.alpha = alpha
-        mvar = calculate_var(Y, rho, alpha=alpha)
+        mvar = calculate_var(Y, variance=rho, alpha=alpha)
         mvar_pfront, mvar_pidx = find_pareto_front(mvar, return_index=True)
         mvar_pset = X[mvar_pidx]
         mvar_hv_value = calc_hypervolume(mvar_pfront, ref_point=args.ref_point)
@@ -133,7 +132,7 @@ class DataExport:
         pfront = self.optimizer.status["pfront"]
         hv_value = self.optimizer.status["hv"]
 
-        mvar = calculate_var(Y_next, rho_next, self.alpha)
+        mvar = calculate_var(Y_next, variance=rho_next, alpha=self.alpha)
         mvar_pfront = self.optimizer.status["mvar_pfront"]
         mvar_pset = self.optimizer.status["mvar_pset"]
         mvar_hv_value = self.optimizer.status["mvar_hv"]
@@ -163,12 +162,13 @@ class DataExport:
         for i in range(self.n_obj):
             col_name = f"f{i + 1}"
             d1[col_name] = Y_next[:, i]
+            d2["Pareto_" + col_name] = pfront[:, i]
+            
             col_name = f"rho_f{i + 1}"
             d1[col_name] = rho_next[:, i]
             col_name = f"mvar_f{i + 1}"
             d1[col_name] = mvar[:, i]
 
-            d2["Pareto_" + col_name] = pfront[:, i]
             d5["Pareto_mvar_f{i + 1}"] = mvar_pfront[:, i]
 
             col_name = f"Expected_f{i + 1}"
@@ -207,7 +207,7 @@ class DataExport:
             approx_pset = self.optimizer.solver.solution["x"]
             val = self.optimizer.surrogate_model.evaluate(approx_pset)
             approx_pfront = val["F"]
-            approx_pset = self.transformation.undo(approx_pset)
+            approx_pset, approx_pfront = self.transformation.undo(approx_pset, approx_pfront)
 
             # find undominated
             approx_pfront, pidx = find_pareto_front(approx_pfront, return_index=True)
@@ -239,7 +239,7 @@ class DataExport:
                 )
 
             val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True)
-            val["mvar_F"] = calculate_var(val["F"], val["rho_F"], self.alpha)
+            val["mvar_F"] = calculate_var(val["F"], variance=val["rho_F"], alpha=self.alpha)
 
             for key in val:
                 if val[key] is None:
@@ -254,8 +254,7 @@ class DataExport:
             # add iteration id and x1, x2 columns
             d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
 
-            X_mesh = self.transformation.undo(x_mesh)
-            Y_mesh = val["F"]
+            X_mesh, Y_mesh = self.transformation.undo(x_mesh, val["F"])
 
             mvar_F_mesh = val["mvar_F"]
 
@@ -290,6 +289,9 @@ class DataExport:
         self.export_approx_all = pd.concat(
             [self.export_approx_all, df4], ignore_index=True, axis=0
         )
+        self.export_mvar_pareto = pd.concat(
+            [self.export_mvar_pareto, df5], ignore_index=True, axis=0
+        )
 
     def save_psmodel(self):
         """
@@ -306,12 +308,14 @@ class DataExport:
         dataframes = [
             self.export_data,
             self.export_pareto,
+            self.export_mvar_pareto,
             self.export_approx_pareto,
             self.export_approx_all,
         ]
         filenames = [
             "EvaluatedSamples",
             "ParetoFrontEvaluated",
+            "MVaRParetoFrontEvaluated",
             "ParetoFrontApproximation",
             "ApproximationAll",
         ]

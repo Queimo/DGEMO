@@ -7,19 +7,8 @@ import plotly.express as px
 import numpy as np
 import pandas as pd
 from arguments import get_vis_args
-from utils import get_problem_dir, get_algo_names, defaultColors
+from utils import get_problem_dir, get_algo_names, defaultColors, calculate_var
 import yaml
-from scipy.stats import norm
-
-
-def calculate_var(mean, std_dev, alpha=0.9):
-
-    # Calculate the z-score for the given alpha level
-    z_score = norm.ppf(alpha)
-
-    # Calculate mVaR for each variable
-    var = mean + z_score * std_dev
-    return var
 
 
 def get_data_of_step(pareto_approx_df, selected_iteration):
@@ -74,7 +63,7 @@ def main():
             alpha = yml_list[kk]["solver"]["alpha"]
             for i in range(1, n_obj + 1):
                 approx_all_df[f"mvar_F_{i}"] = calculate_var(
-                    approx_all_df[f"F_{i}"], approx_all_df[f"rho_F_{i}"], alpha
+                    approx_all_df[f"F_{i}"], variance=approx_all_df[f"rho_F_{i}"], alpha=alpha
                 )
 
         # label the sample
