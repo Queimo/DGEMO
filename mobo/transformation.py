@@ -61,7 +61,7 @@ class Transformation:
         self.x_scaler = self.x_scaler.fit(x)
         self.y_scaler = self.y_scaler.fit(y)
 
-    def do(self, x=None, y=None):
+    def do(self, x=None, y=None, rho=None):
         assert x is not None or y is not None
         if x is not None:
             x_res = self.x_scaler.transform(np.atleast_2d(x))
@@ -72,16 +72,26 @@ class Transformation:
             y_res = self.y_scaler.transform(np.atleast_2d(y))
             if len(np.array(y).shape) < 2:
                 y_res = y_res.squeeze()
+        
+        if rho is not None:
+            rho_res = rho / self.y_scaler.scale_**2
+            
+            if len(np.array(rho).shape) < 2:
+                rho_res = rho_res.squeeze()
 
-        if x is not None and y is not None:
-            return x_res, y_res
+        if x is not None and y is not None and rho is not None:
+            return x_res, y_res, rho_res
         elif x is not None:
             return x_res
+        elif y is not None and rho is not None:
+            return y_res, rho_res
         elif y is not None:
             return y_res
+        elif rho is not None:
+            return rho_res
 
-    def undo(self, x=None, y=None):
-        assert x is not None or y is not None
+    def undo(self, x=None, y=None, rho=None):
+        assert x is not None or y is not None or rho is not None
         if x is not None:
             x_res = self.x_scaler.inverse_transform(np.atleast_2d(x))
             if len(np.array(x).shape) < 2:
@@ -91,13 +101,24 @@ class Transformation:
             y_res = self.y_scaler.inverse_transform(np.atleast_2d(y))
             if len(np.array(y).shape) < 2:
                 y_res = y_res.squeeze()
+                
+        if rho is not None:
+            rho_res = rho * self.y_scaler.scale_**2
+            
+            if len(np.array(rho).shape) < 2:
+                rho_res = rho_res.squeeze()
 
-        if x is not None and y is not None:
-            return x_res, y_res
+        if x is not None and y is not None and rho is not None:
+            return x_res, y_res, rho_res
         elif x is not None:
             return x_res
+        elif y is not None and rho is not None:
+            return y_res, rho_res
         elif y is not None:
             return y_res
+        elif rho is not None:
+            return rho_res
+        
     
 
 class StandardTransform(Transformation):
