@@ -2,6 +2,8 @@ import numpy as np
 from pymoo.factory import get_from_list, get_reference_directions
 from problems import *
 from external import lhs
+from botorch.utils.sampling import draw_sobol_samples
+import torch
 
 
 def get_problem_options():
@@ -65,8 +67,7 @@ def generate_initial_samples(problem, n_sample):
 
     # NOTE: when it's really hard to get feasible samples, the program hangs here
     while len(X_feasible) < n_sample:
-        X = lhs(problem.n_var, n_sample)
-        X = problem.xl + X * (problem.xu - problem.xl)
+        X = draw_sobol_samples(bounds=torch.tensor(problem.bounds), n=n_sample, q=1).squeeze().numpy()
         Y, feasible, rho = problem.evaluate(X, return_values_of=['F', 'feasible', 'rho'])
         feasible = feasible.flatten()
         X_feasible = np.vstack([X_feasible, X[feasible]])
