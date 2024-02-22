@@ -60,7 +60,6 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
 
         model = self.bo_model
         
-
         
         with torch.no_grad():
             post = model.posterior(
@@ -70,19 +69,22 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
             F = -post.mean.squeeze(-1).detach().cpu().numpy()
             S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
-        if noise:
-            if isinstance(model.likelihood, LikelihoodList):
-                rho_F = np.zeros_like(F)
-                rho_S = np.zeros_like(S)
-                for i, likelihood in enumerate(model.likelihood.likelihoods):
-                    if hasattr(likelihood.noise_covar, "noise_model"):
-                        rho_post = likelihood.noise_covar.noise_model.posterior(X)
-                        rho_F[:, i] = rho_post.mean.detach().cpu().squeeze(-1).numpy()[::self.n_w]
-                        rho_S[:, i] = rho_post.variance.sqrt().detach().cpu().squeeze(-1).numpy()[::self.n_w]
-            else:
-                rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
-                rho_F = rho_post.mean.detach().cpu().numpy()[::self.n_w, :]
-                rho_S = rho_post.variance.sqrt().detach().cpu().numpy()[::self.n_w, :]
+            if noise:
+                if isinstance(model.likelihood, LikelihoodList):
+                    rho_F = np.zeros_like(F)
+                    rho_S = np.zeros_like(S)
+                    for i, likelihood in enumerate(model.likelihood.likelihoods):
+                        if hasattr(likelihood.noise_covar, "noise_model"):
+                            rho_post = likelihood.noise_covar.noise_model.posterior(X)
+                            rho_F[:, i] = rho_post.mean.detach().cpu().squeeze(-1).numpy()[::self.n_w]
+                            rho_S[:, i] = rho_post.variance.sqrt().detach().cpu().squeeze(-1).numpy()[::self.n_w]
+                else:
+                    rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
+                    rho_F = rho_post.mean.detach().cpu().numpy()[::self.n_w, :]
+                    rho_S = rho_post.variance.sqrt().detach().cpu().numpy()[::self.n_w, :]
+                
+                # rho_F = model.posterior(X, posterior_transform=ExpectationPosteriorTransform(n_w=self.n_w), observation_noise=True).variance.squeeze(-1).detach().cpu().numpy()
+                # rho_F= (rho1-S**2).clip(min=0)
 
         # #simplest 2d --> 2d test problem
         # def f(X):

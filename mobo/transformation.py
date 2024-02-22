@@ -74,13 +74,16 @@ class Transformation:
                 y_res = y_res.squeeze()
         
         if rho is not None:
-            rho_res = rho / self.y_scaler.scale_**2
+            # rho_res = rho / self.y_scaler.scale_**2
+            rho_res = rho 
             
             if len(np.array(rho).shape) < 2:
                 rho_res = rho_res.squeeze()
 
         if x is not None and y is not None and rho is not None:
             return x_res, y_res, rho_res
+        elif x is not None and y is not None:
+            return x_res, y_res
         elif x is not None:
             return x_res
         elif y is not None and rho is not None:
@@ -103,13 +106,16 @@ class Transformation:
                 y_res = y_res.squeeze()
                 
         if rho is not None:
-            rho_res = rho * self.y_scaler.scale_**2
+            # rho_res = rho * self.y_scaler.scale_**2
+            rho_res = rho
             
             if len(np.array(rho).shape) < 2:
                 rho_res = rho_res.squeeze()
 
         if x is not None and y is not None and rho is not None:
             return x_res, y_res, rho_res
+        elif x is not None and y is not None:
+            return x_res, y_res
         elif x is not None:
             return x_res
         elif y is not None and rho is not None:

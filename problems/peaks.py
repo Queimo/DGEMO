@@ -3,7 +3,7 @@ from .problem import RiskyProblem
 
 class Peaks(RiskyProblem):
 
-    def __init__(self, sigma=4, repeat_eval=10):
+    def __init__(self, sigma=.3, repeat_eval=100):
         
         self.sigma = sigma
         self.repeat_eval = repeat_eval
@@ -26,7 +26,7 @@ class Peaks(RiskyProblem):
         return train_obj
     
     def _evaluate_rho(self, x):
-        train_rho = self.evaluate_repeat(x).var(axis=-1)
+        train_rho = self.evaluate_repeat(x).std(axis=-1)
         #check nan
         if np.isnan(train_rho).any():
             print("nan in rho")
@@ -112,6 +112,7 @@ class Peaks(RiskyProblem):
         y2 = self.styblinski_tang_function(x1, x2)
         
         return np.stack([y1, y2], axis=-1)
+        # return np.stack([300*(x1-x2)**3, 200*(x2-x1)**3], axis=-1)
         
     def sigmoid(self, x):
         """ Sigmoid function for scaling. """

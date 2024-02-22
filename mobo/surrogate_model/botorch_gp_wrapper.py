@@ -24,7 +24,7 @@ from mobo.surrogate_model.base import SurrogateModel
 import gpytorch
 import torch
 
-from .botorch_helper import ZeroKernel, CustomHeteroskedasticSingleTaskGP
+from .botorch_helper import ZeroKernel, CustomHeteroskedasticSingleTaskGP, CustomHeteroskedasticSingleTaskGP2
 
 class BoTorchSurrogateModel(SurrogateModel):
     """
@@ -33,8 +33,6 @@ class BoTorchSurrogateModel(SurrogateModel):
 
     def __init__(self, n_var, n_obj, **kwargs):
         self.bo_model = None
-        self.mll = None
-        self.state_dict = None
         self.input_transform = None
         super().__init__(n_var, n_obj)
 
@@ -65,17 +63,18 @@ class BoTorchSurrogateModel(SurrogateModel):
         rho_torch = (
             torch.tensor(rho).to(**tkwargs).detach() if rho is not None else None
         )
-        print("rho_max", rho_torch.max())
+        #print all statistics of rho for debugging
+        print("rho statistics")
+        for i in range(Y_torch.shape[1]):
+            print(f"mean: {rho_torch[:,i].mean()}, std: {rho_torch[:,i].std()}")
 
         mll, self.bo_model = self.initialize_model(
             X_torch.clone(), Y_torch.clone(), rho_torch.clone()
         )
         self._fit(X_torch, Y_torch, rho_torch)
         # print state dict except input_transform
-        for i, m in enumerate(self.bo_model.models):
-            for p in m.named_parameters():
-                print(p)
-            
+        
+    
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
@@ -83,31 +82,19 @@ class BoTorchSurrogateModel(SurrogateModel):
         
         models = []
         for i in range(self.n_obj):
-            model = CustomHeteroskedasticSingleTaskGP(
-                train_X=train_x,
+            model = CustomHeteroskedasticSingleTaskGP2(
+                train_X=train_x,     
                 train_Y=train_y_mean[..., i:i+1],
                 train_Yvar=train_y_var[..., i:i+1],
                 input_transform=self.input_transform,
-                outcome_transform=Standardize(m=1),
-            )            
+                outcome_transform=Standardize(m=1),            )            
             
             models.append(model)
+            mll = ExactMarginalLogLikelihood(model.likelihood, model)
+            fit_gpytorch_mll(mll, max_retries=5)
         
         model = ModelListGP(*models)
         mll = SumMarginalLogLikelihood(model.likelihood, model)
-        
-        
-        if self.state_dict is not None:
-            try:
-                #replace each input_transform with the one from the new model
-                for i, m in enumerate(model.models):
-                    self.bo_model.models[i].input_transform = m.input_transform 
-                self.state_dict = self.bo_model.state_dict()
-                
-                model.load_state_dict(self.state_dict, strict=False)
-            except Exception as e:
-                print(e)
-                print("failed to load state dict")
 
         return mll, model
 

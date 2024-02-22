@@ -94,7 +94,7 @@ class MOBO:
         #MVaR Calculation
         
         #compute MVaR HV
-        mvar = calculate_var(self.Y, variance=self.rho, alpha=self.solver.alpha)
+        mvar = calculate_var(self.Y, std=self.rho, alpha=self.solver.alpha)
         mvar_pfront, mvar_pidx = find_pareto_front(mvar, return_index=True)
         mvar_pset = self.X[mvar_pidx]
         mvar_hv_value = calc_hypervolume(mvar_pfront, ref_point=self.ref_point_handler.get_ref_point(is_botorch=False))

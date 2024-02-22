@@ -50,7 +50,7 @@ class DataExport:
         else:
             alpha = self.optimizer.solver.alpha
         self.alpha = alpha
-        mvar = calculate_var(Y, variance=rho, alpha=alpha)
+        mvar = calculate_var(Y, std=rho, alpha=alpha)
         mvar_pfront, mvar_pidx = find_pareto_front(mvar, return_index=True)
         mvar_pset = X[mvar_pidx]
         mvar_hv_value = calc_hypervolume(mvar_pfront, ref_point=args.ref_point)
@@ -132,7 +132,7 @@ class DataExport:
         pfront = self.optimizer.status["pfront"]
         hv_value = self.optimizer.status["hv"]
 
-        mvar = calculate_var(Y_next, variance=rho_next, alpha=self.alpha)
+        mvar = calculate_var(Y_next, std=rho_next, alpha=self.alpha)
         mvar_pfront = self.optimizer.status["mvar_pfront"]
         mvar_pset = self.optimizer.status["mvar_pset"]
         mvar_hv_value = self.optimizer.status["mvar_hv"]
@@ -239,8 +239,7 @@ class DataExport:
                 )
 
             val = self.optimizer.surrogate_model.evaluate(x_mesh, std=True, noise=True)
-            val["mvar_F"] = calculate_var(val["F"], variance=val["rho_F"], alpha=self.alpha)
-
+            
             for key in val:
                 if val[key] is None:
                     continue
@@ -255,8 +254,9 @@ class DataExport:
             d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
 
             X_mesh, Y_mesh = self.transformation.undo(x_mesh, val["F"])
+            rho_mesh = val["rho_F"]
 
-            mvar_F_mesh = val["mvar_F"]
+            mvar_F_mesh = calculate_var(Y_mesh, std=rho_mesh, alpha=self.alpha)
 
             d4["F_1"] = Y_mesh[:, 0]
             d4["F_2"] = Y_mesh[:, 1]
