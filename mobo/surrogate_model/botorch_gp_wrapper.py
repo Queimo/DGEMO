@@ -81,13 +81,14 @@ class BoTorchSurrogateModel(SurrogateModel):
         train_y_var = train_rho + 1e-6
         
         models = []
-        for i in range(self.n_obj):
+        for i in range(train_y_mean.shape[1]):
             model = CustomHeteroskedasticSingleTaskGP2(
                 train_X=train_x,     
                 train_Y=train_y_mean[..., i:i+1],
                 train_Yvar=train_y_var[..., i:i+1],
                 input_transform=self.input_transform,
-                outcome_transform=Standardize(m=1),            )            
+                outcome_transform=Standardize(m=1),            
+                )            
             
             models.append(model)
             mll = ExactMarginalLogLikelihood(model.likelihood, model)

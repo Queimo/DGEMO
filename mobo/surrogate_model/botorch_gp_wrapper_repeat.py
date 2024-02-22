@@ -141,28 +141,12 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
 
 class BoTorchSurrogateModelReapeatMean(BoTorchSurrogateModelReapeat):
 
-    # last objective is the "deterministic" one
+    def __init__(self, n_var, n_obj, **kwargs):
+        super().__init__(n_var, n_obj, **kwargs)
     
-    def initialize_model(self, train_x, train_y, train_rho=None):
+    def initialize_model(self, train_x, train_y, train_rho):
         # define models for objective and constraint
-        train_y_mean = -train_y  # negative because botorch assumes maximization
-        train_y_var = train_rho + 1e-10
-        
-        
-        models = []
-        for i in range(self.n_obj-1):
-            model = CustomHeteroskedasticSingleTaskGP(
-                train_X=train_x,
-                train_Y=train_y_mean[..., i:i+1],
-                train_Yvar=train_y_var[..., i:i+1],
-                input_transform=self.input_transform,
-                outcome_transform=Standardize(m=1),
-            )            
-            
-            models.append(model)
-        
-        model = ModelListGP(*models)
-        mll = SumMarginalLogLikelihood(model.likelihood, model)
+        mll, model_list_GP = super().initialize_model(train_x, train_y[...,:-1], train_rho[...,:-1])
         
         class LinearMean(gpytorch.means.Mean):
             def __init__(self):        
@@ -173,7 +157,13 @@ class BoTorchSurrogateModelReapeatMean(BoTorchSurrogateModelReapeat):
                 # Stoichiometric balance
                 y = torch.min(0.5 * x[..., 0], 1.0 * x[..., 1]) * x[..., 3]
                 return y
-            
+        
+        # should not have any effect
+        train_y_mean = -train_y  # negative because botorch assumes maximization
+        train_y_var = train_rho + 1e-6
+        
+        models = [*model_list_GP.models]
+        
         model_mean = SingleTaskGP(
             train_X=train_x,
             train_Y=train_y_mean[..., -1:],
@@ -189,18 +179,6 @@ class BoTorchSurrogateModelReapeatMean(BoTorchSurrogateModelReapeat):
         models.append(model_mean)
         model = ModelListGP(*models)
         
-        if self.state_dict is not None:
-            try:
-                #replace each input_transform with the one from the new model
-                for i, m in enumerate(model.models):
-                    self.bo_model.models[i].input_transform = m.input_transform 
-                self.state_dict = self.bo_model.state_dict()
-                
-                model.load_state_dict(self.state_dict, strict=False)
-            except Exception as e:
-                print(e)
-                print("failed to load state dict")
-
         return mll, model
 
         

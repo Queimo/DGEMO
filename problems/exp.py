@@ -120,7 +120,7 @@ class Experiment4D(RiskyProblem):
         return self.Y[: x.shape[0], :]
 
     def _evaluate_rho(self, x):
-        return self.rho
+        return self.rho[: x.shape[0], :]
 
     def pareto_front(self, n_pareto_points=1000):
 
