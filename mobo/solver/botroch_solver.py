@@ -40,7 +40,8 @@ tkwargs = {
     "dtype": torch.double,
     "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 }
-print("SMOKE_TEST", SMOKE_TEST)
+SMOKE_TEST = os.environ.get("SMOKE_TEST")
+# print("SMOKE_TEST", SMOKE_TEST)
 NUM_RESTARTS = 10 if not SMOKE_TEST else 2
 RAW_SAMPLES = 512 if not SMOKE_TEST else 4
 MC_SAMPLES = 128 if not SMOKE_TEST else 16
