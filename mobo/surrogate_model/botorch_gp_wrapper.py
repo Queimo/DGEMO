@@ -82,7 +82,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         
         models = []
         for i in range(train_y_mean.shape[1]):
-            model = CustomHeteroskedasticSingleTaskGP(
+            model = CustomHeteroskedasticSingleTaskGP3(
                 train_X=train_x,     
                 train_Y=train_y_mean[..., i:i+1],
                 train_Yvar=train_y_var[..., i:i+1],

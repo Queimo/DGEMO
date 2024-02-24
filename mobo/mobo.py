@@ -112,8 +112,7 @@ class MOBO:
 
         # data normalization
         self.transformation.fit(self.X, self.Y)
-        X, Y = self.transformation.do(self.X, self.Y)
-        rho = self.rho
+        X, Y, rho = self.transformation.do(self.X, self.Y, self.rho)
 
         # build surrogate models
         self.surrogate_model.fit(X, Y, rho)

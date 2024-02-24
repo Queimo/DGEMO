@@ -19,21 +19,6 @@ class Peaks3(RiskyProblem):
             xu=self.bounds[1,:],
         )
     
-    def _evaluate_F(self, x):
-        train_obj = self.evaluate_repeat(x)
-        train_obj = train_obj.mean(axis=-1)
-        return train_obj
-
-    
-    def _evaluate_rho(self, x):
-        train_obj = self.evaluate_repeat(x)
-        train_rho = train_obj.std(axis=-1)
-        if np.isnan(train_rho).any():
-            print("nan in rho")
-            train_rho = np.zeros_like(train_rho)
-        return train_rho 
-    
-    
     def pareto_front(self, n_pareto_points=1000):
         
         from .common import generate_initial_samples

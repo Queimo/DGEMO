@@ -3,7 +3,7 @@ from .problem import RiskyProblem
 
 class Peaks(RiskyProblem):
 
-    def __init__(self, sigma=.3, repeat_eval=100):
+    def __init__(self, sigma=1., repeat_eval=100):
         
         self.sigma = sigma
         self.repeat_eval = repeat_eval
@@ -19,19 +19,6 @@ class Peaks(RiskyProblem):
             xu=self.bounds[1,:],
         )
     
-    def _evaluate_F(self, x):
-        train_obj = self.evaluate_repeat(x)
-        # train_obj = np.quantile(train_obj, 0.01, axis=-1)
-        train_obj = train_obj.mean(axis=-1)
-        return train_obj
-    
-    def _evaluate_rho(self, x):
-        train_rho = self.evaluate_repeat(x).std(axis=-1)
-        #check nan
-        if np.isnan(train_rho).any():
-            print("nan in rho")
-            train_rho = np.zeros_like(train_rho)
-        return train_rho 
     
     def pareto_front(self, n_pareto_points=500):
         
@@ -60,25 +47,6 @@ class Peaks(RiskyProblem):
         Y_paretos_l = solution_l['y']
         Y_paretos_h = solution_h['y']
         return [Y_paretos, Y_paretos_l, Y_paretos_h]
-    
-    # def pareto_front(self, n_pareto_points=1000):
-        
-    #     from .common import generate_initial_samples
-    #     from mobo.utils import find_pareto_front
-         
-    #     prob = self.__class__(repeat_eval=50)
-    #     X_init, Y_init, rho_init = generate_initial_samples(prob, n_pareto_points)
-        
-    #     Y_l = np.quantile(self.evaluate_repeat(X_init), 0.9, axis=-1)
-    #     Y_h = np.quantile(self.evaluate_repeat(X_init), 0.1, axis=-1)
-    #     # Y_h = self.evaluate_repeat(X_init).max(axis=-1)
-        
-    #     Y_paretos = find_pareto_front(Y_init)
-    #     Y_paretos_l = find_pareto_front(Y_l)
-    #     Y_paretos_h = find_pareto_front(Y_h)
-        
-
-    #     return [Y_paretos, Y_paretos_l, Y_paretos_h]
     
     def evaluate_repeat(self, x: np.array) -> np.array:
         y_true = self.f(x)
@@ -163,20 +131,6 @@ class Peaks4D(RiskyProblem):
     # The _evaluate_F, _evaluate_rho, pareto_front, evaluate_repeat, and get_domain methods remain largely unchanged.
     # Minor adjustments might be needed for handling 6-dimensional inputs in evaluate_repeat if the f function changes its input handling.
 
-    def _evaluate_F(self, x):
-        train_obj = self.evaluate_repeat(x)
-        # train_obj = np.quantile(train_obj, 0.01, axis=-1)
-        train_obj = train_obj.mean(axis=-1)
-        return train_obj
-    
-    def _evaluate_rho(self, x):
-        train_rho = self.evaluate_repeat(x).std(axis=-1)
-        #check nan
-        if np.isnan(train_rho).any():
-            print("nan in rho")
-            train_rho = np.zeros_like(train_rho)
-        return train_rho 
-    
     
     def pareto_front(self, n_pareto_points=500):
         

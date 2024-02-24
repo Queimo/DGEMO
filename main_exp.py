@@ -37,6 +37,7 @@ class MOBOEXP(ALGO):
     def __init__(self, problem, n_iter, ref_point_handler, framework_args, batch_size=6):
         
         self.df = problem.df_mean_std
+        self.problem
         self.batch_size = batch_size
         
         super().__init__(problem, n_iter, ref_point_handler, framework_args)
@@ -47,8 +48,7 @@ class MOBOEXP(ALGO):
 
         # data normalization
         self.transformation.fit(self.X, self.Y)
-        X,Y = self.transformation.do(self.X, self.Y)
-        rho = self.rho
+        X, Y, rho = self.transformation.do(self.X, self.Y, self.rho)
 
         # X, Y, rho = self.transformation.do(self.X, self.Y, self.rho)
 
@@ -82,9 +82,8 @@ class MOBOEXP(ALGO):
             # Don't need to evaluate real problem because we don't have the data yet
             # evaluate prediction of X_next on surrogate model
             val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True, noise=True)
-            Y_next_pred_mean = self.transformation.undo(y=val['F'])
+            Y_next_pred_mean, rho_next = self.transformation.undo(y=val['F'], rho=val['rho_F'])
             Y_next = Y_next_pred_mean
-            rho_next = val['rho_F']
             Y_next_pred_std = val['S']
             acquisition, _, _ = self.acquisition.evaluate(val)
         
@@ -94,14 +93,14 @@ class MOBOEXP(ALGO):
             solution = self.solver.nsga2_solve(surr_problem, X, Y)
             self.solver.solution = solution
             timer.log("Surrogate problem solved")
-            X_next = self.df.iloc[self.sample_num:self.sample_num+self.batch_size][["C_NaOH/C_ZnCl_mean", "C_ZnCl_mean"]].values
-            Y_next = -1 * self.df.iloc[self.sample_num:self.sample_num+self.batch_size][["Peak Ratio_mean", "Aspect Ratio_mean", "C_ZnCl_mean"]].values # we assume minimzation
-            rho_next = self.df.iloc[self.sample_num:self.sample_num+self.batch_size][["Peak Ratio_std", "Aspect Ratio_std", "C_ZnCl_std"]].values
+            X_next = self.df.iloc[self.sample_num:self.sample_num+self.batch_size][self.problem.var_cols].values
+            Y_next = -1 * self.df.iloc[self.sample_num:self.sample_num+self.batch_size][self.problem.obj_cols].values # we assume minimzation
+            rho_next = self.df.iloc[self.sample_num:self.sample_num+self.batch_size][[col.replace("_mean","_std") for col in self.problem.obj_cols]].values
             
-        val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True)
-        Y_next_pred_mean = self.transformation.undo(y=val['F'])
-        Y_next_pred_std = val['S']
-        acquisition, _, _ = self.acquisition.evaluate(val)
+            val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True, noise=True)
+            Y_next_pred_mean, rho_next = self.transformation.undo(y=val['F'], rho=val['rho_F'])
+            Y_next_pred_std = val['S']
+            acquisition, _, _ = self.acquisition.evaluate(val)
 
         
         if self.real_problem.n_constr > 0:

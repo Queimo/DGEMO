@@ -299,7 +299,7 @@ class CustomHeteroskedasticSingleTaskGP3(SingleTaskGP):
         noise_model = SingleTaskGP(
             train_X=train_X,
             train_Y=train_Yvar,
-            likelihood=noise_likelihood,
+            # likelihood=noise_likelihood,
             outcome_transform=Log(),
             input_transform=input_transform,
         )
@@ -308,7 +308,7 @@ class CustomHeteroskedasticSingleTaskGP3(SingleTaskGP):
 
         heteroskedastic_noise = HeteroskedasticNoise(
             noise_model=noise_model,
-            noise_constraint=GreaterThan(MIN_INFERRED_NOISE_LEVEL, transform=torch.exp, inv_transform=torch.log),
+            # noise_constraint=GreaterThan(MIN_INFERRED_NOISE_LEVEL, transform=torch.exp, inv_transform=torch.log),
         )
 
         likelihood = _GaussianLikelihoodBase(heteroskedastic_noise)

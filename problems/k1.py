@@ -20,20 +20,6 @@ class K1(RiskyProblem):
             xu=self.bounds[1,:],
         )
     
-    def _evaluate_F(self, x):
-        train_obj = self.evaluate_repeat(x)
-        # train_obj = np.quantile(train_obj, 0.01, axis=-1)
-        train_obj = train_obj.mean(axis=-1)
-        return -1 * train_obj / np.array([18., 1.]) + np.array([0., 1.])
-    
-    def _evaluate_rho(self, x):
-        train_rho = self.evaluate_repeat(x).std(axis=-1)
-        #check nan
-        if np.isnan(train_rho).any():
-            print("nan in rho")
-            train_rho = np.zeros_like(train_rho)
-        return train_rho / np.array([18., 1.]) + 1.1212432443345e-04 #introduce numerical love
-    
     
     def pareto_front(self, n_pareto_points=500):
         

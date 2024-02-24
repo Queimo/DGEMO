@@ -77,6 +77,7 @@ def main():
         for df in data_list + paretoEval_list + paretoGP_list + [approx_all_df]:
             df["hovertext"] = df.apply(makeLabel, axis=1)
         # Maximum number of iterations to display
+        
 
         max_iterations = approx_all_df["iterID"].unique().shape[0] + 1
 

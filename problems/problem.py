@@ -233,8 +233,19 @@ class Problem(PymooProblem):
 
 
 class RiskyProblem(Problem):
+    
+    def _evaluate_F(self, x):
+        train_obj = self.evaluate_repeat(x)
+        train_obj = train_obj.mean(axis=-1)
+        return train_obj
+    
     def _evaluate_rho(self, x):
-        return np.zeros_like(self._evaluate_F(x)) # default to no risk
+        train_rho = self.evaluate_repeat(x).var(axis=-1)
+        #check nan
+        if np.isnan(train_rho).any():
+            print("nan in rho")
+            train_rho = np.zeros_like(train_rho)
+        return train_rho 
 
     def _evaluate(self, x, out, *args, return_values_of=None, **kwargs):
         if "F" in return_values_of:
