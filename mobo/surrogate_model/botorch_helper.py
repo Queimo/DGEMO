@@ -236,10 +236,10 @@ class CustomHeteroskedasticSingleTaskGP(HeteroskedasticSingleTaskGP):
             likelihood=likelihood,
             input_transform=input_transform,
         )
-        self.register_added_loss_term("noise_added_loss")
-        self.update_added_loss_term(
-            "noise_added_loss", NoiseModelAddedLossTerm(noise_model)
-        )
+        # self.register_added_loss_term("noise_added_loss")
+        # self.update_added_loss_term(
+        #     "noise_added_loss", NoiseModelAddedLossTerm(noise_model)
+        # )
         if outcome_transform is not None:
             self.outcome_transform = outcome_transform
         self.to(train_X)

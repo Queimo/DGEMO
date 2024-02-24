@@ -78,16 +78,16 @@ class BoTorchSurrogateModel(SurrogateModel):
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
-        train_y_var = train_rho + 1e-6
+        train_y_var = train_rho + 1e-10
         
         models = []
         for i in range(train_y_mean.shape[1]):
-            model = CustomHeteroskedasticSingleTaskGP2(
+            model = CustomHeteroskedasticSingleTaskGP(
                 train_X=train_x,     
                 train_Y=train_y_mean[..., i:i+1],
                 train_Yvar=train_y_var[..., i:i+1],
                 input_transform=self.input_transform,
-                outcome_transform=Standardize(m=1),            
+                # outcome_transform=Standardize(m=1),            
                 )            
             
             models.append(model)
@@ -129,8 +129,15 @@ class BoTorchSurrogateModel(SurrogateModel):
                 for i, likelihood in enumerate(model.likelihood.likelihoods):
                     if hasattr(likelihood.noise_covar, "noise_model"):
                         rho_post = likelihood.noise_covar.noise_model.posterior(X)
-                        rho_F[:, i] = rho_post.mean.detach().cpu().squeeze(-1).numpy()
-                        rho_S[:, i] = rho_post.variance.sqrt().detach().cpu().squeeze(-1).numpy()
+                        rho_F_i = rho_post.mean.detach().cpu().numpy()
+                        rho_S_i = rho_post.variance.sqrt().detach().cpu().numpy()
+                        # if F.shape[1] == 1: does not work for 1d
+                        if F.ndim == 1:
+                            rho_F = rho_F_i
+                            rho_S = rho_S_i
+                        else:
+                            rho_F[:, i] = rho_F_i.squeeze(-1)
+                            rho_S[:, i] = rho_S_i.squeeze(-1)
             else:
                 rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
                 rho_F = rho_post.mean.detach().cpu().numpy()
