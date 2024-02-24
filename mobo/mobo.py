@@ -113,6 +113,7 @@ class MOBO:
         # data normalization
         self.transformation.fit(self.X, self.Y)
         X, Y, rho = self.transformation.do(self.X, self.Y, self.rho)
+        Y, rho = self.Y, self.rho
 
         # build surrogate models
         self.surrogate_model.fit(X, Y, rho)
@@ -143,6 +144,7 @@ class MOBO:
         # evaluate prediction of X_next on surrogate model
         val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True)
         Y_next_pred_mean = self.transformation.undo(y=val['F'])
+        Y_next_pred_mean = val['F']
         Y_next_pred_std = val['S']
         acquisition, _, _ = self.acquisition.evaluate(val)
 

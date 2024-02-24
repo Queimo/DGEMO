@@ -70,24 +70,28 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
             S = post.variance.sqrt().detach().cpu().numpy()
 
             if noise:
-                if isinstance(model.likelihood, LikelihoodList):
-                    rho_F = np.zeros_like(F)
-                    rho_S = np.zeros_like(S)
-                    for i, likelihood in enumerate(model.likelihood.likelihoods):
-                        if hasattr(likelihood.noise_covar, "noise_model"):
-                            rho_post = likelihood.noise_covar.noise_model.posterior(X)
-                            rho_F_i = rho_post.mean.detach().cpu().numpy()[::self.n_w]
-                            rho_S_i = rho_post.variance.sqrt().detach().cpu().numpy()[::self.n_w]
-                            if F.shape[1] == 1:
-                                rho_F = rho_F_i
-                                rho_S = rho_S_i
-                            else:
-                                rho_F[:, i] = rho_F_i.squeeze(-1)
-                                rho_S[:, i] = rho_S_i.squeeze(-1)
-                else:
-                    rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
-                    rho_F = rho_post.mean.detach().cpu().numpy()[::self.n_w, :]
-                    rho_S = rho_post.variance.sqrt().detach().cpu().numpy()[::self.n_w, :]
+                noise_post = self.noise_model.posterior(X)
+                rho_F = noise_post.mean.detach().cpu().numpy()[::self.n_w]
+                rho_S = noise_post.variance.sqrt().detach().cpu().numpy()[::self.n_w]
+                
+                # if isinstance(model.likelihood, LikelihoodList):
+                #     rho_F = np.zeros_like(F)
+                #     rho_S = np.zeros_like(S)
+                #     for i, likelihood in enumerate(model.likelihood.likelihoods):
+                #         if hasattr(likelihood.noise_covar, "noise_model"):
+                #             rho_post = likelihood.noise_covar.noise_model.posterior(X)
+                #             rho_F_i = rho_post.mean.detach().cpu().numpy()[::self.n_w]
+                #             rho_S_i = rho_post.variance.sqrt().detach().cpu().numpy()[::self.n_w]
+                #             if F.shape[1] == 1:
+                #                 rho_F = rho_F_i
+                #                 rho_S = rho_S_i
+                #             else:
+                #                 rho_F[:, i] = rho_F_i.squeeze(-1)
+                #                 rho_S[:, i] = rho_S_i.squeeze(-1)
+                # else:
+                #     rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
+                #     rho_F = rho_post.mean.detach().cpu().numpy()[::self.n_w, :]
+                #     rho_S = rho_post.variance.sqrt().detach().cpu().numpy()[::self.n_w, :]
                 
                 # rho_F = model.posterior(X, posterior_transform=ExpectationPosteriorTransform(n_w=self.n_w), observation_noise=True).variance.squeeze(-1).detach().cpu().numpy()
                 # rho_F= (rho1-S**2).clip(min=0)

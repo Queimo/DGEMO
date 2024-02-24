@@ -196,8 +196,9 @@ class RAqLogNEHVISolver(RAqNEHVISolver):
 
 
 class qNEI(qNoisyExpectedImprovement):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, ext_noise_model, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.ext_noise_model = ext_noise_model
 
     def _get_samples_and_objectives(self, X):
         r"""Compute samples at new points, using the cached root decomposition.
@@ -212,8 +213,9 @@ class qNEI(qNoisyExpectedImprovement):
         """
         q = X.shape[-2]
         X_full = torch.cat([match_batch_shape(self.X_baseline, X), X], dim=-2)
+        noise_posterior = self.ext_noise_model.posterior(X_full)
         posterior = self.model.posterior(
-            X_full, posterior_transform=self.posterior_transform, observation_noise=True
+            X_full, posterior_transform=self.posterior_transform, observation_noise=noise_posterior.mean
         )
         
         if not self._cache_root:
@@ -270,6 +272,7 @@ class MARSSolver(BoTorchSolver):
             objective=mars,
             prune_baseline=True,
             sampler=sampler,
+            ext_noise_model=surrogate_model.noise_model,
         )
 
         selection = self.optimize_acqf_loop(problem, acq_func)

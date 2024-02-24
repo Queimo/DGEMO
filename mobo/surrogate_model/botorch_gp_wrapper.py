@@ -17,7 +17,7 @@ from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
 from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
 from gpytorch.likelihoods import LikelihoodList
 from botorch.fit import fit_gpytorch_mll, fit_gpytorch_model, fit_gpytorch_mll_torch
-from botorch.models.transforms.outcome import Standardize
+from botorch.models.transforms.outcome import Standardize, Log
 
 from mobo.surrogate_model.base import SurrogateModel
 
@@ -33,15 +33,13 @@ class BoTorchSurrogateModel(SurrogateModel):
 
     def __init__(self, n_var, n_obj, **kwargs):
         self.bo_model = None
+        self.noise_model = None
         self.input_transform = None
         super().__init__(n_var, n_obj)
 
-    def _fit(self, X_torch, Y_torch, rho_torch=None):
+    def _fit(self, mll, X_torch, Y_torch, rho_torch=None):
 
         try:
-            mll, self.bo_model = self.initialize_model(
-                X_torch.clone(), Y_torch.clone(), rho_torch.clone()
-            )
             fit_gpytorch_mll(mll, max_retries=5)
             return
         except RuntimeError as e:
@@ -49,9 +47,6 @@ class BoTorchSurrogateModel(SurrogateModel):
             print("failed to fit, retrying with torch optim...")
 
         try:
-            mll, self.bo_model = self.initialize_model(
-                X_torch.clone(), Y_torch.clone(), rho_torch.clone()
-            )
             fit_gpytorch_mll_torch(mll, step_limit=2000)
         except RuntimeError as e:
             print(e)
@@ -68,11 +63,11 @@ class BoTorchSurrogateModel(SurrogateModel):
         for i in range(Y_torch.shape[1]):
             print(f"mean: {rho_torch[:,i].mean()}, std: {rho_torch[:,i].std()}, min: {rho_torch[:,i].min()}, max: {rho_torch[:,i].max()}")
 
-        mll, self.bo_model = self.initialize_model(
-            X_torch.clone(), Y_torch.clone(), rho_torch.clone()
-        )
-        self._fit(X_torch, Y_torch, rho_torch)
-        # print state dict except input_transform
+        mll, self.bo_model = self.initialize_model(X_torch, Y_torch, torch.zeros_like(Y_torch))
+        mll_noise, self.noise_model = self.initialize_noise_model(X_torch, rho_torch, torch.zeros_like(rho_torch))
+        
+        self._fit(mll, X_torch, Y_torch, rho_torch)
+        self._fit(mll_noise, X_torch, rho_torch, torch.zeros_like(rho_torch))
         
     
     def initialize_model(self, train_x, train_y, train_rho=None):
@@ -82,7 +77,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         
         models = []
         for i in range(train_y_mean.shape[1]):
-            model = CustomHeteroskedasticSingleTaskGP3(
+            model = SingleTaskGP(
                 train_X=train_x,     
                 train_Y=train_y_mean[..., i:i+1],
                 train_Yvar=train_y_var[..., i:i+1],
@@ -99,6 +94,30 @@ class BoTorchSurrogateModel(SurrogateModel):
 
         return mll, model
 
+    def initialize_noise_model(self, train_x, train_y, train_rho=None):
+        train_y_mean = train_y + 1e-6
+        # train_y_var = torch.tensor(train_rho, **tkwargs) + 1e-6
+
+        models = []
+        for i in range(train_y_mean.shape[1]):
+            model = SingleTaskGP(
+                train_X=train_x,     
+                train_Y=train_y_mean[..., i:i+1],
+                # train_Yvar=train_y_var[..., i:i+1],
+                input_transform=self.input_transform,
+                outcome_transform=Log(),            
+                )            
+            
+            models.append(model)
+            mll = ExactMarginalLogLikelihood(model.likelihood, model)
+            fit_gpytorch_mll(mll, max_retries=5)
+
+        model = ModelListGP(*models)
+        mll = SumMarginalLogLikelihood(model.likelihood, model)
+        fit_gpytorch_mll(mll, max_retries=5)
+        return mll, model
+    
+    
     def evaluate(
         self,
         X,
@@ -123,25 +142,29 @@ class BoTorchSurrogateModel(SurrogateModel):
         S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
         if noise:
-            if isinstance(model.likelihood, LikelihoodList):
-                rho_F = np.zeros_like(F)
-                rho_S = np.zeros_like(S)
-                for i, likelihood in enumerate(model.likelihood.likelihoods):
-                    if hasattr(likelihood.noise_covar, "noise_model"):
-                        rho_post = likelihood.noise_covar.noise_model.posterior(X)
-                        rho_F_i = rho_post.mean.detach().cpu().numpy()
-                        rho_S_i = rho_post.variance.sqrt().detach().cpu().numpy()
-                        # if F.shape[1] == 1: does not work for 1d
-                        if F.ndim == 1:
-                            rho_F = rho_F_i
-                            rho_S = rho_S_i
-                        else:
-                            rho_F[:, i] = rho_F_i.squeeze(-1)
-                            rho_S[:, i] = rho_S_i.squeeze(-1)
-            else:
-                rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
-                rho_F = rho_post.mean.detach().cpu().numpy()
-                rho_S = rho_post.variance.sqrt().detach().cpu().numpy()
+            noise_post = self.noise_model.posterior(X)
+            rho_F = noise_post.mean.squeeze(-1).detach().cpu().numpy()
+            rho_S = noise_post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
+            
+            # if isinstance(model.likelihood, LikelihoodList):
+            #     rho_F = np.zeros_like(F)
+            #     rho_S = np.zeros_like(S)
+            #     for i, likelihood in enumerate(model.likelihood.likelihoods):
+            #         if hasattr(likelihood.noise_covar, "noise_model"):
+            #             rho_post = likelihood.noise_covar.noise_model.posterior(X)
+            #             rho_F_i = rho_post.mean.detach().cpu().numpy()
+            #             rho_S_i = rho_post.variance.sqrt().detach().cpu().numpy()
+            #             # if F.shape[1] == 1: does not work for 1d
+            #             if F.ndim == 1:
+            #                 rho_F = rho_F_i
+            #                 rho_S = rho_S_i
+            #             else:
+            #                 rho_F[:, i] = rho_F_i.squeeze(-1)
+            #                 rho_S[:, i] = rho_S_i.squeeze(-1)
+            # else:
+            #     rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
+            #     rho_F = rho_post.mean.detach().cpu().numpy()
+            #     rho_S = rho_post.variance.sqrt().detach().cpu().numpy()
 
         # #simplest 2d --> 2d test problem
         # def f(X):
