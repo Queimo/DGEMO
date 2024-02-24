@@ -67,7 +67,7 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
             )
             # negative because botorch assumes maximization (undo previous negative)
             F = -post.mean.detach().cpu().numpy()
-            S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
+            S = post.variance.sqrt().detach().cpu().numpy()
 
             if noise:
                 if isinstance(model.likelihood, LikelihoodList):
@@ -82,8 +82,8 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
                                 rho_F = rho_F_i
                                 rho_S = rho_S_i
                             else:
-                                rho_F[:, i] = rho_F_i
-                                rho_S[:, i] = rho_S_i
+                                rho_F[:, i] = rho_F_i.squeeze(-1)
+                                rho_S[:, i] = rho_S_i.squeeze(-1)
                 else:
                     rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
                     rho_F = rho_post.mean.detach().cpu().numpy()[::self.n_w, :]

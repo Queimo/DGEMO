@@ -74,7 +74,7 @@ class Transformation:
                 y_res = y_res.squeeze()
         
         if rho is not None:
-            rho_res = rho * self.y_scaler.scale_**2
+            rho_res = rho / self.y_scaler.scale_**2
             # rho_res = rho 
             
             if len(np.array(rho).shape) < 2:
@@ -106,7 +106,7 @@ class Transformation:
                 y_res = y_res.squeeze()
                 
         if rho is not None:
-            rho_res = rho / self.y_scaler.scale_**2
+            rho_res = rho * self.y_scaler.scale_**2
             # rho_res = rho
             
             if len(np.array(rho).shape) < 2:
