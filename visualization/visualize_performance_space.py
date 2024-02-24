@@ -67,6 +67,7 @@ def main():
 
     # read result csvs
     data_list, paretoEval_list, paretoGP_list, yml_list = [], [], [], []
+    mvar_paretoEval_list, mvar_paretoGP_list = [], []
     for algo_name in algo_names:
         csv_folder = f'{problem_dir}/{algo_name}/{seed}/'
         data_list.append(pd.read_csv(csv_folder + 'EvaluatedSamples.csv'))

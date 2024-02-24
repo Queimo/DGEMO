@@ -63,7 +63,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         for i in range(Y_torch.shape[1]):
             print(f"mean: {rho_torch[:,i].mean()}, std: {rho_torch[:,i].std()}, min: {rho_torch[:,i].min()}, max: {rho_torch[:,i].max()}")
 
-        mll, self.bo_model = self.initialize_model(X_torch, Y_torch, torch.zeros_like(Y_torch))
+        mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
         mll_noise, self.noise_model = self.initialize_noise_model(X_torch, rho_torch, torch.zeros_like(rho_torch))
         
         self._fit(mll, X_torch, Y_torch, rho_torch)
@@ -80,7 +80,7 @@ class BoTorchSurrogateModel(SurrogateModel):
             model = SingleTaskGP(
                 train_X=train_x,     
                 train_Y=train_y_mean[..., i:i+1],
-                train_Yvar=train_y_var[..., i:i+1],
+                # train_Yvar=train_y_var[..., i:i+1],
                 input_transform=self.input_transform,
                 outcome_transform=Standardize(m=1),            
                 )            
@@ -175,30 +175,34 @@ class BoTorchSurrogateModel(SurrogateModel):
         # jac_batch = jacobian_mean.diagonal(dim1=0,dim2=2).transpose(0,-1).transpose(1,2).numpy()
 
         if calc_gradient:
-            jac_F = torch.autograd.functional.jacobian(
-                lambda x: -self.bo_model(x).mean.T, X
-            )
-            dF = (
-                jac_F.diagonal(dim1=0, dim2=2)
-                .transpose(0, -1)
-                .transpose(1, 2)
-                .detach()
-                .cpu()
-                .numpy()
-            )
+            if isinstance(model.likelihood, LikelihoodList):
+                dF = np.zeros((X.shape[0], F.shape[1], X.shape[1]))
+                dS = np.zeros((X.shape[0], F.shape[1], X.shape[1]))
+                for i, m in enumerate(model.models):
+                    jac_F = torch.autograd.functional.jacobian(
+                        lambda x: -m.posterior(x).mean.T, X
+                    )
+                    dF[...,i] = (
+                        jac_F.diagonal(dim1=0, dim2=2)
+                        .transpose(0, -1)
+                        .transpose(1, 2)
+                        .detach()
+                        .cpu()
+                        .numpy()
+                    )
 
-            if std:
-                jac_S = torch.autograd.functional.jacobian(
-                    lambda x: self.bo_model(x).variance.sqrt().T, X
-                )
-                dS = (
-                    jac_S.diagonal(dim1=0, dim2=2)
-                    .transpose(0, -1)
-                    .transpose(1, 2)
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
+                    if std:
+                        jac_S = torch.autograd.functional.jacobian(
+                            lambda x: m.posterior(x).variance.sqrt().T, X
+                        )
+                        dS[:,i] = (
+                            jac_S.diagonal(dim1=0, dim2=2)
+                            .transpose(0, -1)
+                            .transpose(1, 2)
+                            .detach()
+                            .cpu()
+                            .numpy()
+                        )
 
         out = {
             "F": F,

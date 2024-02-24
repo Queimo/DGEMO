@@ -25,6 +25,9 @@ class Solver:
         self.algo_kwargs = kwargs
         self.solution = None
         self.ref_point = None
+        self.alpha = kwargs["alpha"]
+        self.n_w = kwargs["n_w"]
+        # print("alpha", self.alpha)
 
     def set_ref_point(self, ref_point):
         self.ref_point = ref_point

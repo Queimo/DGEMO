@@ -66,7 +66,7 @@ class DataExport:
             var_name = f"x{i + 1}"
             d1[var_name] = X[:, i]
             d2[var_name] = pset[:, i]
-            d5[f"mvar_{var_name}"] = mvar_pset[:, i]
+            d5[var_name] = mvar_pset[:, i]
             column_names.append(var_name)
 
         # performance
@@ -80,7 +80,6 @@ class DataExport:
 
             obj_name = f"Pareto_f{i + 1}"
             d2[obj_name] = pfront[:, i]
-            col_name = f"Pareto_mvar_f{i + 1}"
             d5[col_name] = mvar_pfront[:, i]
 
         # predicted performance
@@ -156,20 +155,20 @@ class DataExport:
             var_name = f"x{i + 1}"
             d1[var_name] = X_next[:, i]
             d2[var_name] = pset[:, i]
-            d5[f"mvar{var_name}"] = mvar_pset[:, i]
+            d5[var_name] = mvar_pset[:, i]
 
         # performance and predicted performance
         for i in range(self.n_obj):
             col_name = f"f{i + 1}"
             d1[col_name] = Y_next[:, i]
-            d2["Pareto_" + col_name] = pfront[:, i]
+            d2[f"Pareto_{col_name}"] = pfront[:, i]
+            d5[f"Pareto_{col_name}"] = mvar_pfront[:, i]
             
             col_name = f"rho_f{i + 1}"
             d1[col_name] = rho_next[:, i]
             col_name = f"mvar_f{i + 1}"
             d1[col_name] = mvar[:, i]
 
-            d5["Pareto_mvar_f{i + 1}"] = mvar_pfront[:, i]
 
             col_name = f"Expected_f{i + 1}"
             d1[col_name] = Y_next_pred_mean[:, i]

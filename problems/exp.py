@@ -14,27 +14,27 @@ class Experiment(RiskyProblem):
         df = pd.read_excel("./problems/data/MT-KBH-001/XRD+synthsis_data_b3.xlsx")
         df = df[["id", "C_ZnCl", "C_NaOH/C_ZnCl", "Aspect Ratio", "Peak Ratio"]]
         df_mean = df.select_dtypes(include=["float64", "int64"]).groupby("id").mean()
-        df_std = df.select_dtypes(include=["float64", "int64"]).groupby("id").std()
-        df_mean_std = pd.merge(
+        df_var = df.select_dtypes(include=["float64", "int64"]).groupby("id").var()
+        df_mean_var = pd.merge(
             df_mean,
-            df_std,
+            df_var,
             left_index=True,
             right_index=True,
-            suffixes=("_mean", "_std"),
+            suffixes=("_mean", "_var"),
         )
-        self.df_mean_std = df_mean_std
-        print(df_mean_std)
+        self.df_mean_var = df_mean_var
+        print(df_mean_var)
         # X1 = C_NaOH/C_ZnCl, X2 = C_ZnCl
         # Y1 = Peak Ratio, Y2 = Aspect Ratio, Y3 = C_ZnCl
-        self.X = df_mean_std[["C_NaOH/C_ZnCl_mean", "C_ZnCl_mean"]].values
+        self.X = df_mean_var[["C_NaOH/C_ZnCl_mean", "C_ZnCl_mean"]].values
         self.Y = (
             -1
-            * df_mean_std[
+            * df_mean_var[
                 ["Peak Ratio_mean", "Aspect Ratio_mean", "C_ZnCl_mean"]
             ].values
         )  # we assume minimzation
-        self.rho = df_mean_std[
-            ["Peak Ratio_std", "Aspect Ratio_std", "C_ZnCl_std"]
+        self.rho = df_mean_var[
+            ["Peak Ratio_var", "Aspect Ratio_var", "C_ZnCl_var"]
         ].values
 
         super().__init__(
@@ -87,27 +87,27 @@ class Experiment4D(RiskyProblem):
         self.var_cols = ["C_NaOH/C_ZnCl_mean", "C_ZnCl_mean", "Q_AC_mean", "Q_AIR_mean"]
         
         df_mean = df.select_dtypes(include=["float64", "int64"]).groupby("id").mean()
-        df_std = df.select_dtypes(include=["float64", "int64"]).groupby("id").std()
-        df_mean_std = pd.merge(
+        df_var = df.select_dtypes(include=["float64", "int64"]).groupby("id").var()
+        df_mean_var = pd.merge(
             df_mean,
-            df_std,
+            df_var,
             left_index=True,
             right_index=True,
-            suffixes=("_mean", "_std"),
+            suffixes=("_mean", "_var"),
         )
-        self.df_mean_std = df_mean_std
-        print(df_mean_std)
+        self.df_mean_var = df_mean_var
+        print(df_mean_var)
         # X1 = C_NaOH/C_ZnCl, X2 = C_ZnCl
         # Y1 = Peak Ratio, Y2 = Aspect Ratio, Y3 = C_ZnCl
-        self.X = df_mean_std[["C_NaOH/C_ZnCl_mean", "C_ZnCl_mean", "Q_AC_mean", "Q_AIR_mean"]].values
+        self.X = df_mean_var[["C_NaOH/C_ZnCl_mean", "C_ZnCl_mean", "Q_AC_mean", "Q_AIR_mean"]].values
         self.Y = (
             -1
-            * df_mean_std[
+            * df_mean_var[
                 ["Peak Ratio_mean", "Aspect Ratio_mean", "N_ZnO_mean"]
             ].values
         )  # we assume minimzation
-        self.rho = df_mean_std[
-            ["Peak Ratio_std", "Aspect Ratio_std", "N_ZnO_std"]
+        self.rho = df_mean_var[
+            ["Peak Ratio_var", "Aspect Ratio_var", "N_ZnO_var"]
         ].values
 
         super().__init__(

@@ -41,7 +41,7 @@ tkwargs = {
     "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 }
 SMOKE_TEST = os.environ.get("SMOKE_TEST")
-SMOKE_TEST = True
+# SMOKE_TEST = True
 print("SMOKE_TEST", SMOKE_TEST)
 NUM_RESTARTS = 10 if not SMOKE_TEST else 2
 RAW_SAMPLES = 512 if not SMOKE_TEST else 4
@@ -52,9 +52,6 @@ class BoTorchSolver(NSGA2Solver):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.alpha = kwargs["alpha"]
-        self.n_w = kwargs["n_w"]
-        print("alpha", self.alpha)
 
     @abstractmethod
     def bo_solve(self, problem, X, Y, rho):
@@ -108,12 +105,18 @@ class BoTorchSolver(NSGA2Solver):
         return self.bo_solve(problem, X, Y, rho)
 
 class qNEHVI(qNoisyExpectedHypervolumeImprovement):
+    def __init__(self, ext_noise_model, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ext_noise_model = ext_noise_model
     
     @concatenate_pending_points
     @t_batch_mode_transform()
     def forward(self, X):
         X_full = torch.cat([match_batch_shape(self.X_baseline, X), X], dim=-2)
-        posterior = self.model.posterior(X_full, observation_noise=True)
+        noise_posterior = self.ext_noise_model.posterior(X_full)
+        posterior = self.model.posterior(
+            X_full, observation_noise=noise_posterior.mean
+        )
         event_shape_lag = 1 if is_ensemble(self.model) else 2
         n_w = (
             posterior._extended_shape()[X_full.dim() - event_shape_lag]
@@ -127,12 +130,18 @@ class qNEHVI(qNoisyExpectedHypervolumeImprovement):
 
 
 class qLogNEHVI(qLogNoisyExpectedHypervolumeImprovement):
+    def __init__(self, ext_noise_model, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ext_noise_model = ext_noise_model
     
     @concatenate_pending_points
     @t_batch_mode_transform()
     def forward(self, X):
         X_full = torch.cat([match_batch_shape(self.X_baseline, X), X], dim=-2)
-        posterior = self.model.posterior(X_full, observation_noise=True)
+        noise_posterior = self.ext_noise_model.posterior(X_full)
+        posterior = self.model.posterior(
+            X_full, observation_noise=noise_posterior.mean
+        )
         # Account for possible one-to-many transform and the model batch dimensions in
         # ensemble models.
         event_shape_lag = 1 if is_ensemble(self.model) else 2
@@ -182,6 +191,7 @@ class RAqNEHVISolver(BoTorchSolver):
             objective=objective,
             prune_baseline=True,
             cache_root=True,
+            ext_noise_model=surrogate_model.noise_model,
         )
 
         selection = self.optimize_acqf_loop(problem, acq_func, sequential=self.sequential)
@@ -302,7 +312,7 @@ class qNEHVISolver(BoTorchSolver):
             sampler=sampler,
         )
 
-        selection = self.optimize_acqf_loop(problem, acq_func)
+        selection = self.optimize_acqf_loop(problem, acq_func, sequential=True)
 
         return selection
 
@@ -337,6 +347,6 @@ class qEHVISolver(BoTorchSolver):
             sampler=sampler,
         )
 
-        selection = self.optimize_acqf_loop(problem, acq_func)
+        selection = self.optimize_acqf_loop(problem, acq_func, sequential=True)
 
         return selection

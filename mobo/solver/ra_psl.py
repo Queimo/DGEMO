@@ -125,6 +125,7 @@ class RAPSLSolver(Solver):
             value = mean - coef_lcb * std + gamma * (rho_F - coef_lcb_rho * rho_S)
             value_grad = mean_grad - coef_lcb * std_grad + gamma * (drho_F - coef_lcb_rho * drho_S)
             
+            
             tch_idx = torch.argmax((1 / pref_vec) * (value - self.z), axis = 1)
             tch_idx_mat = [torch.arange(len(tch_idx)),tch_idx]
             tch_grad = (1 / pref_vec)[tch_idx_mat].view(n_pref_update,1) *  value_grad[tch_idx_mat] + 0.01 * torch.sum(value_grad, axis = 1) 
@@ -151,37 +152,6 @@ class RAPSLSolver(Solver):
         Y_candidate_mean, Y_candidata_std = out['F'], out['S']
         Y_candidate = Y_candidate_mean - coef_lcb * Y_candidata_std
         
-        # optional TCH-based local Exploitation 
-        # if n_local > 0:
-        #     X_candidate_tch = X_candidate_np
-        #     z_candidate = self.z.cpu().numpy()
-        #     pref_np = pref.cpu().numpy()
-        #     for _ in range(n_local):
-        #         candidate_mean =  surrogate_model.evaluate(X_candidate_tch)['F']
-        #         candidate_mean_grad =  surrogate_model.evaluate(X_candidate_tch, calc_gradient=True)['dF']
-                
-        #         candidate_std = surrogate_model.evaluate(X_candidate_tch, std=True)['S']
-        #         candidate_std_grad = surrogate_model.evaluate(X_candidate_tch, std=True, calc_gradient=True)['dS']
-                
-        #         candidate_value = candidate_mean - coef_lcb * candidate_std
-        #         candidate_grad = candidate_mean_grad - coef_lcb * candidate_std_grad
-                
-        #         candidate_tch_idx = np.argmax((1 / pref_np) * (candidate_value - z_candidate), axis = 1)
-        #         candidate_tch_idx_mat = [np.arange(len(candidate_tch_idx)),list(candidate_tch_idx)]
-                
-        #         candidate_tch_grad = (1 / pref_np)[np.arange(len(candidate_tch_idx)),list(candidate_tch_idx)].reshape(n_candidate,1) * candidate_grad[np.arange(len(candidate_tch_idx)),list(candidate_tch_idx)] 
-        #         candidate_tch_grad +=  0.01 * np.sum(candidate_grad, axis = 1) 
-                
-        #         X_candidate_tch = X_candidate_tch - 0.01 * candidate_tch_grad
-        #         X_candidate_tch[X_candidate_tch <= 0]  = 0
-        #         X_candidate_tch[X_candidate_tch >= 1]  = 1  
-                
-        #     X_candidate_np = np.vstack([X_candidate_np, X_candidate_tch])
-            
-        #     Y_candidate_mean = surrogate_model.evaluate(X_candidate_np)['F']
-        #     Y_candidata_std = surrogate_model.evaluate(X_candidate_np, std=True)['S']
-            
-        #     Y_candidate = Y_candidate_mean - coef_lcb * Y_candidata_std
         
         
         # construct solution
