@@ -24,7 +24,7 @@ from mobo.surrogate_model.base import SurrogateModel
 import gpytorch
 import torch
 
-from .botorch_helper import ZeroKernel, CustomHeteroskedasticSingleTaskGP, CustomHeteroskedasticSingleTaskGP2
+from .botorch_helper import ZeroKernel, CustomHeteroskedasticSingleTaskGP, CustomHeteroskedasticSingleTaskGP2, CustomHeteroskedasticSingleTaskGP3
 
 class BoTorchSurrogateModel(SurrogateModel):
     """
@@ -87,7 +87,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                 train_Y=train_y_mean[..., i:i+1],
                 train_Yvar=train_y_var[..., i:i+1],
                 input_transform=self.input_transform,
-                # outcome_transform=Standardize(m=1),            
+                outcome_transform=Standardize(m=1),            
                 )            
             
             models.append(model)
