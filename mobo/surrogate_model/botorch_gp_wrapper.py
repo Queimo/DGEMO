@@ -66,7 +66,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         #print all statistics of rho for debugging
         print("rho statistics")
         for i in range(Y_torch.shape[1]):
-            print(f"mean: {rho_torch[:,i].mean()}, std: {rho_torch[:,i].std()}")
+            print(f"mean: {rho_torch[:,i].mean()}, std: {rho_torch[:,i].std()}, min: {rho_torch[:,i].min()}, max: {rho_torch[:,i].max()}")
 
         mll, self.bo_model = self.initialize_model(
             X_torch.clone(), Y_torch.clone(), rho_torch.clone()

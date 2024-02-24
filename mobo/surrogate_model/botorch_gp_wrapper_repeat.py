@@ -66,7 +66,7 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
                 X, posterior_transform=ExpectationPosteriorTransform(n_w=self.n_w)
             )
             # negative because botorch assumes maximization (undo previous negative)
-            F = -post.mean.squeeze(-1).detach().cpu().numpy()
+            F = -post.mean.detach().cpu().numpy()
             S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
             if noise:
@@ -76,8 +76,14 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
                     for i, likelihood in enumerate(model.likelihood.likelihoods):
                         if hasattr(likelihood.noise_covar, "noise_model"):
                             rho_post = likelihood.noise_covar.noise_model.posterior(X)
-                            rho_F[:, i] = rho_post.mean.detach().cpu().squeeze(-1).numpy()[::self.n_w]
-                            rho_S[:, i] = rho_post.variance.sqrt().detach().cpu().squeeze(-1).numpy()[::self.n_w]
+                            rho_F_i = rho_post.mean.detach().cpu().numpy()[::self.n_w]
+                            rho_S_i = rho_post.variance.sqrt().detach().cpu().numpy()[::self.n_w]
+                            if F.shape[1] == 1:
+                                rho_F = rho_F_i
+                                rho_S = rho_S_i
+                            else:
+                                rho_F[:, i] = rho_F_i
+                                rho_S[:, i] = rho_S_i
                 else:
                     rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
                     rho_F = rho_post.mean.detach().cpu().numpy()[::self.n_w, :]
