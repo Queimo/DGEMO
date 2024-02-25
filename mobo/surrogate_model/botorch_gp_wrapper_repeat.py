@@ -165,7 +165,13 @@ class BoTorchSurrogateModelReapeatMean(BoTorchSurrogateModelReapeat):
             def forward(self, x):
                 """Your forward method."""
                 # Stoichiometric balance
-                y = torch.min(0.5 * x[..., 0], 1.0 * x[..., 1]) * x[..., 3]
+                c_ohzn = x[..., 0]
+                c_zn = x[..., 1]
+                Q_AC = x[..., 2]
+                C_Zn = c_zn * 1.
+                C_OHZn = c_ohzn * 3. + 0.5
+                C_OH = C_OHZn * C_Zn
+                y = torch.min(C_Zn, 0.5 * C_OH) * Q_AC
                 return y
         
         # should not have any effect
@@ -180,7 +186,6 @@ class BoTorchSurrogateModelReapeatMean(BoTorchSurrogateModelReapeat):
             train_Yvar=train_y_var[..., -1:]*0.0,
             likelihood= gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-10)),
             input_transform=self.input_transform,
-            outcome_transform=Standardize(m=1),
             mean_module=LinearMean(),
             covar_module=ZeroKernel(),
         )
