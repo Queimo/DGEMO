@@ -85,7 +85,7 @@ def main():
         approx_all_i = get_data_of_step(approx_all_df, 1)
         n_grid = int(np.sqrt(approx_all_i.shape[0]))
 
-        rows = 2
+        rows = n_obj
         cols = 4
 
         fig = make_subplots(
@@ -185,6 +185,24 @@ def main():
 
             for i in range(1, cols + 1):
                 for j in range(1, rows + 1):
+                    # add evaluation pareto front with yellow squares
+                    fig.add_trace(
+                        go.Scatter(
+                            x=paretoEval_trimmed["x1"],
+                            y=paretoEval_trimmed["x2"],
+                            mode="markers",
+                            visible=(iteration == 1),
+                            marker=dict(
+                                size=9,
+                                color="yellow",
+                                symbol="square",
+                                line=dict(color="black", width=1),
+                            ),
+                        ),
+                        row=j,
+                        col=i,
+                    )
+
                     fig.add_trace(
                         go.Scatter(
                             x=data_trimmed["x1"],
@@ -236,24 +254,6 @@ def main():
                                 size=15,
                                 color="red",
                                 symbol="x",
-                                line=dict(color="black", width=1),
-                            ),
-                        ),
-                        row=j,
-                        col=i,
-                    )
-
-                    # add evaluation pareto front with yellow squares
-                    fig.add_trace(
-                        go.Scatter(
-                            x=paretoEval_trimmed["x1"],
-                            y=paretoEval_trimmed["x2"],
-                            mode="markers",
-                            visible=(iteration == 1),
-                            marker=dict(
-                                size=8,
-                                color="yellow",
-                                symbol="square",
                                 line=dict(color="black", width=1),
                             ),
                         ),
