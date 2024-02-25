@@ -167,12 +167,14 @@ class BoTorchSurrogateModelReapeatMean(BoTorchSurrogateModelReapeat):
                 # Stoichiometric balance
                 c_ohzn = x[..., 0]
                 c_zn = x[..., 1]
-                Q_AC = x[..., 2]
-                C_Zn = c_zn * 1.
-                C_OHZn = c_ohzn * 3. + 0.5
+                q_AC = x[..., 2]
+                Q_AC = q_AC * 6 + 4
+                C_Zn = c_zn * 0.9 + 0.1
+                C_OHZn = c_ohzn * 3. + 0.5 #unnormalize based on bounds
                 C_OH = C_OHZn * C_Zn
-                y = torch.min(C_Zn, 0.5 * C_OH) * Q_AC
-                return y
+                C_ZnO = torch.min(C_Zn, 0.5 * C_OH)
+                N_ZnO = C_ZnO * Q_AC
+                return N_ZnO
         
         # should not have any effect
         train_y_mean = -train_y  # negative because botorch assumes maximization

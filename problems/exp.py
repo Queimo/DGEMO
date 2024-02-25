@@ -100,6 +100,16 @@ class Experiment4D(RiskyProblem):
         # X1 = C_NaOH/C_ZnCl, X2 = C_ZnCl
         # Y1 = Peak Ratio, Y2 = Aspect Ratio, Y3 = C_ZnCl
         self.X = df_mean_var[["C_NaOH/C_ZnCl_mean", "C_ZnCl_mean", "Q_AC_mean", "Q_AIR_mean"]].values
+        
+        Q_AC = self.X[:, 2]
+        C_Zn = self.X[:, 1] 
+        C_OHZn = self.X[:, 0] 
+        C_OH = C_OHZn * C_Zn
+        C_ZnO = np.min(np.array([C_Zn, 0.5 * C_OH]), axis=0)
+        N_ZnO = C_ZnO * Q_AC
+        N_ZnO
+        df_mean_var["N_ZnO_mean"] = N_ZnO
+        
         self.Y = (
             -1
             * df_mean_var[
