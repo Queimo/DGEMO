@@ -51,14 +51,7 @@ def get_nehvi_ref_point(
         Y = Y_samples
     else:
         with torch.no_grad():
-            post_mean = model.posterior(X_baseline, observation_noise=True).mean
-            # Cost model
-            # # repeat X_baseline 11 times
-            # X_b_reapeat = X_baseline.repeat(11, 1)
-            # det_func = lambda x: x[:, 1].unsqueeze(-1)
-            # y3 = det_func(X_b_reapeat)
-            # # join tensors [110,2] and [110,1]
-            # Y = torch.cat([post_mean, y3], dim=1)
+            post_mean = model.posterior(X_baseline).mean
             Y = post_mean
 
     if objective is not None:

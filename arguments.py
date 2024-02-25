@@ -10,7 +10,7 @@ Here we speficy different argument parsers to avoid argument conflict between in
 
 alpha = 0.9
 n_init_sample = 12
-n_iter = 3
+n_iter = 5
 batch_size = 6
 n_w = 11
  

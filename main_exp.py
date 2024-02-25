@@ -24,8 +24,8 @@ import wandb
 
 from mobo.algorithms import RAqNEHVI, qNEHVI, MARS, RAqLogNEHVI, MARSdet, qNEHVIdet
 
-algo_name = 'raqlognehvidet'
-# algo_name = 'marsdet'
+# algo_name = 'raqlognehvidet'
+algo_name = 'marsdet'
 # algo_name = 'mars'
 ALGO = get_algorithm(algo_name)
 
@@ -36,8 +36,8 @@ class MOBOEXP(ALGO):
 
     def __init__(self, problem, n_iter, ref_point_handler, framework_args, batch_size=6):
         
-        self.df = problem.df_mean_std
-        self.problem
+        self.df = problem.df_mean_var
+        self.problem = problem
         self.batch_size = batch_size
         
         super().__init__(problem, n_iter, ref_point_handler, framework_args)
@@ -49,7 +49,7 @@ class MOBOEXP(ALGO):
         # data normalization
         self.transformation.fit(self.X, self.Y)
         X, Y, rho = self.transformation.do(self.X, self.Y, self.rho)
-
+        Y, rho = self.Y, self.rho
         # X, Y, rho = self.transformation.do(self.X, self.Y, self.rho)
 
         # # build surrogate models
@@ -82,7 +82,10 @@ class MOBOEXP(ALGO):
             # Don't need to evaluate real problem because we don't have the data yet
             # evaluate prediction of X_next on surrogate model
             val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True, noise=True)
-            Y_next_pred_mean, rho_next = self.transformation.undo(y=val['F'], rho=val['rho_F'])
+            # Y_next_pred_mean, rho_next = self.transformation.undo(y=val['F'], rho=val['rho_F'])
+            Y_next_pred_mean = val['F']
+            rho_next_pred = val['rho_F']
+            rho_next = rho_next_pred
             Y_next = Y_next_pred_mean
             Y_next_pred_std = val['S']
             acquisition, _, _ = self.acquisition.evaluate(val)
@@ -95,17 +98,16 @@ class MOBOEXP(ALGO):
             timer.log("Surrogate problem solved")
             X_next = self.df.iloc[self.sample_num:self.sample_num+self.batch_size][self.problem.var_cols].values
             Y_next = -1 * self.df.iloc[self.sample_num:self.sample_num+self.batch_size][self.problem.obj_cols].values # we assume minimzation
-            rho_next = self.df.iloc[self.sample_num:self.sample_num+self.batch_size][[col.replace("_mean","_std") for col in self.problem.obj_cols]].values
+            rho_next = self.df.iloc[self.sample_num:self.sample_num+self.batch_size][[col.replace("_mean","_var") for col in self.problem.obj_cols]].values
             
             val = self.surrogate_model.evaluate(self.transformation.do(x=X_next), std=True, noise=True)
-            Y_next_pred_mean, rho_next = self.transformation.undo(y=val['F'], rho=val['rho_F'])
+            # Y_next_pred_mean, rho_next = self.transformation.undo(y=val['F'], rho=val['rho_F'])
+            Y_next_pred_mean = val['F']
+            rho_next_pred = val['rho_F']
             Y_next_pred_std = val['S']
             acquisition, _, _ = self.acquisition.evaluate(val)
 
         
-        if self.real_problem.n_constr > 0:
-            Y_next = Y_next[0]
-            rho_next = rho_next[0]
         self._update_status(X_next, Y_next, rho=rho_next)
         timer.log("New samples evaluated")
 

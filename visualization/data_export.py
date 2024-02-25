@@ -80,7 +80,7 @@ class DataExport:
 
             obj_name = f"Pareto_f{i + 1}"
             d2[obj_name] = pfront[:, i]
-            d5[col_name] = mvar_pfront[:, i]
+            d5[obj_name] = mvar_pfront[:, i]
 
         # predicted performance
         for i in range(self.n_obj):

@@ -172,7 +172,7 @@ class Peaks4D(RiskyProblem):
         # Adjusted for 6-dimensional inputs
         y1 = self.brannin_function(X[:, :2])  # Use the first 2 dimensions for Brannin
         y2 = self.styblinski_tang_function(X[:, 2:])  # Use the remaining dimensions for Styblinski-Tang
-        return np.stack([y1, y2, y1*y2], axis=-1)
+        return np.stack([y1, y2, y1+y2], axis=-1)
         
     def styblinski_tang_function(self, X):
         # Adjusted for handling multiple dimensions beyond the original two
