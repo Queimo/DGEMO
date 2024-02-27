@@ -183,7 +183,7 @@ if __name__ == "__main__":
     
     args.algo = algo_name
     args.problem = 'exp4d'
-    args.n_iter = 2
+    args.n_iter = 3
     args.n_init_sample = 12
     args.batch_size = 2
     args.subfolder = 'optimization_3b1'
