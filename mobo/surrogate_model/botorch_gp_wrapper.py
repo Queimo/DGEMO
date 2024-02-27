@@ -50,7 +50,7 @@ class BoTorchSurrogateModel(SurrogateModel):
             fit_gpytorch_mll_torch(mll, step_limit=2000)
         except RuntimeError as e:
             print(e)
-            print("failed to fit. Keeping the previous model.")
+            print("failed to fit.")
 
     def fit(self, X, Y, rho=None):
         X_torch = torch.tensor(X).to(**tkwargs).detach()
@@ -87,7 +87,6 @@ class BoTorchSurrogateModel(SurrogateModel):
             
             models.append(model)
             mll = ExactMarginalLogLikelihood(model.likelihood, model)
-            fit_gpytorch_mll(mll, max_retries=5)
         
         model = ModelListGP(*models)
         mll = SumMarginalLogLikelihood(model.likelihood, model)
@@ -110,11 +109,9 @@ class BoTorchSurrogateModel(SurrogateModel):
             
             models.append(model)
             mll = ExactMarginalLogLikelihood(model.likelihood, model)
-            fit_gpytorch_mll(mll, max_retries=5)
 
         model = ModelListGP(*models)
         mll = SumMarginalLogLikelihood(model.likelihood, model)
-        fit_gpytorch_mll(mll, max_retries=5)
         return mll, model
     
     

@@ -146,8 +146,6 @@ def run_experiment(args, framework_args):
     optimizer = MOBOEXP(
         problem, args.n_iter, ref_point_handler, framework_args, batch_size=args.batch_size
     )
-    
-    
 
     # save arguments & setup logger
     save_args(args, framework_args)
@@ -187,8 +185,8 @@ if __name__ == "__main__":
     args.problem = 'exp4d'
     args.n_iter = 1
     args.n_init_sample = 12
-    args.batch_size = 6
-    args.subfolder = 'optimization_2'
+    args.batch_size = 2
+    args.subfolder = 'optimization_3'
     framework_args["solver"]["batch_size"] = args.batch_size
     framework_args["selection"]["batch_size"] = args.batch_size
 
