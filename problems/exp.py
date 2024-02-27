@@ -11,7 +11,7 @@ class Experiment(RiskyProblem):
         self.bounds = np.array([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 3
-        df = pd.read_excel("./problems/data/MT-KBH-001/XRD+synthsis_data_b3.xlsx")
+        df = pd.read_excel("./problems/data/MT-KBH-001/XRD+synthsis_data_b1.xlsx")
         df = df[["id", "C_ZnCl", "C_NaOH/C_ZnCl", "Aspect Ratio", "Peak Ratio"]]
         df_mean = df.select_dtypes(include=["float64", "int64"]).groupby("id").mean()
         df_var = df.select_dtypes(include=["float64", "int64"]).groupby("id").var()
@@ -81,7 +81,8 @@ class Experiment4D(RiskyProblem):
                                 [3.5, 1.0, 10.0, 2.5]])
         self.dim = 4
         self.num_objectives = 3
-        df = pd.read_excel("./problems/data/MT-KBH-002/XRD+synthsis_data_b0.xlsx")
+        
+        df = pd.read_excel("./problems/data/MT-KBH-003/XRD+synthsis_data_b0.xlsx")
         df = df[["id", "C_ZnCl", "C_NaOH/C_ZnCl", "C_NaOH" ,"Aspect Ratio", "Peak Ratio", "Q_AC", "Q_AIR", "N_ZnO"]]
         self.obj_cols = ["Peak Ratio_mean", "Aspect Ratio_mean", "N_ZnO_mean"]
         self.var_cols = ["C_NaOH/C_ZnCl_mean", "C_ZnCl_mean", "Q_AC_mean", "Q_AIR_mean"]
