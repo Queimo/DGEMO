@@ -1,7 +1,7 @@
 import numpy as np
 from .problem import RiskyProblem
 import pandas as pd
-
+import pathlib
 
 class Experiment(RiskyProblem):
 
@@ -11,7 +11,10 @@ class Experiment(RiskyProblem):
         self.bounds = np.array([[0.5, 0.0], [3.5, 1.0]])
         self.dim = 2
         self.num_objectives = 3
-        df = pd.read_excel("./problems/data/MT-KBH-001/XRD+synthsis_data_b2.xlsx")
+        
+        all_batches_paths = pathlib.Path("./problems/data/MT-KBH-001/").rglob("XRD+synthsis_data_b*.xlsx")
+        print(all_batches_paths[-1])
+        df = pd.read_excel(all_batches_paths[-1])
         df = df[["id", "C_ZnCl", "C_NaOH/C_ZnCl", "Aspect Ratio", "Peak Ratio"]]
         df_mean = df.select_dtypes(include=["float64", "int64"]).groupby("id").mean()
         df_var = df.select_dtypes(include=["float64", "int64"]).groupby("id").var()
