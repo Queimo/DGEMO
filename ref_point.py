@@ -21,8 +21,8 @@ class RefPoint:
     
         self.ref_point_botroch = infer_reference_point(torch.tensor(-Y_init)).numpy().tolist()
         # self.ref_point_botroch = np.max(-Y_init, axis=0).tolist()
-        self.ref_point_pymoo= np.max(Y_init, axis=0).tolist()
-        # self.ref_point_pymoo = (-infer_reference_point(torch.tensor(-Y_init)).numpy()).tolist()
+        # self.ref_point_pymoo= np.max(Y_init, axis=0).tolist()
+        self.ref_point_pymoo = (-infer_reference_point(torch.tensor(-Y_init)).numpy()).tolist()
         print(self)
 
     def get_ref_point(self, is_botorch=False):
