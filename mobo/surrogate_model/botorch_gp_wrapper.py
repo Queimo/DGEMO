@@ -24,7 +24,33 @@ from mobo.surrogate_model.base import SurrogateModel
 import gpytorch
 import torch
 
-from .botorch_helper import ZeroKernel, CustomHeteroskedasticSingleTaskGP, CustomHeteroskedasticSingleTaskGP2, CustomHeteroskedasticSingleTaskGP3
+import torch
+from botorch.models.utils.gpytorch_modules import (
+    MIN_INFERRED_NOISE_LEVEL,
+)
+from gpytorch.constraints.constraints import GreaterThan
+from gpytorch.likelihoods.gaussian_likelihood import GaussianLikelihood
+from gpytorch.priors.smoothed_box_prior import SmoothedBoxPrior
+
+import torch
+import gpytorch
+
+from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
+from botorch.fit import fit_gpytorch_mll, fit_gpytorch_model, fit_gpytorch_mll_torch
+
+tkwargs = {
+    "dtype": torch.double,
+    "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+}
+from .botorch_helper import (
+    ZeroKernel,
+    CustomHeteroskedasticSingleTaskGP,
+    CustomHeteroskedasticSingleTaskGP2,
+    CustomHeteroskedasticSingleTaskGP3,
+)
+
+from pathlib import Path
+
 
 class BoTorchSurrogateModel(SurrogateModel):
     """
@@ -36,8 +62,16 @@ class BoTorchSurrogateModel(SurrogateModel):
         self.noise_model = None
         self.input_transform = None
         super().__init__(n_var, n_obj)
+        
+    def save(self, path):
+        self.state_dict = self.bo_model.state_dict()
+        torch.save(self.state_dict, Path(path) / "state_dict.pt")
+        self.state_dict_noise = self.noise_model.state_dict()
+        torch.save(self.state_dict_noise, Path(path) / "state_dict_noise.pt")
+        
+        
 
-    def _fit(self, mll, X_torch, Y_torch, rho_torch=None):
+    def _fit(self, mll, X_torch=None, Y_torch=None, rho_torch=None):
 
         try:
             fit_gpytorch_mll(mll, max_retries=5)
@@ -58,36 +92,39 @@ class BoTorchSurrogateModel(SurrogateModel):
         rho_torch = (
             torch.tensor(rho).to(**tkwargs).detach() if rho is not None else None
         )
-        #print all statistics of rho for debugging
+        # print all statistics of rho for debugging
         print("rho statistics")
         for i in range(Y_torch.shape[1]):
-            print(f"mean: {rho_torch[:,i].mean()}, std: {rho_torch[:,i].std()}, min: {rho_torch[:,i].min()}, max: {rho_torch[:,i].max()}")
+            print(
+                f"mean: {rho_torch[:,i].mean()}, std: {rho_torch[:,i].std()}, min: {rho_torch[:,i].min()}, max: {rho_torch[:,i].max()}"
+            )
 
         mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
-        mll_noise, self.noise_model = self.initialize_noise_model(X_torch, rho_torch, torch.zeros_like(rho_torch))
-        
+        mll_noise, self.noise_model = self.initialize_noise_model(
+            X_torch, rho_torch, torch.zeros_like(rho_torch)
+        )
+
         self._fit(mll, X_torch, Y_torch, rho_torch)
         self._fit(mll_noise, X_torch, rho_torch, torch.zeros_like(rho_torch))
-        
-    
+
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
         train_y_var = train_rho + 1e-10
-        
+
         models = []
         for i in range(train_y_mean.shape[1]):
             model = SingleTaskGP(
-                train_X=train_x,     
-                train_Y=train_y_mean[..., i:i+1],
+                train_X=train_x,
+                train_Y=train_y_mean[..., i : i + 1],
                 # train_Yvar=train_y_var[..., i:i+1],
                 input_transform=self.input_transform,
-                outcome_transform=Standardize(m=1),            
-                )            
-            
+                outcome_transform=Standardize(m=1),
+            )
+
             models.append(model)
             mll = ExactMarginalLogLikelihood(model.likelihood, model)
-        
+
         model = ModelListGP(*models)
         mll = SumMarginalLogLikelihood(model.likelihood, model)
 
@@ -100,21 +137,26 @@ class BoTorchSurrogateModel(SurrogateModel):
         models = []
         for i in range(train_y_mean.shape[1]):
             model = SingleTaskGP(
-                train_X=train_x,     
-                train_Y=train_y_mean[..., i:i+1],
+                train_X=train_x,
+                train_Y=train_y_mean[..., i : i + 1],
                 # train_Yvar=train_y_var[..., i:i+1],
+                # likelihood=GaussianLikelihood(
+                #     noise_prior=SmoothedBoxPrior(-3, 5, 0.5, transform=torch.log),
+                #     noise_constraint=GreaterThan(
+                #         MIN_INFERRED_NOISE_LEVEL, transform=None, initial_value=1.0
+                #     ),
+                # ),
                 input_transform=self.input_transform,
-                outcome_transform=Log(),            
-                )            
-            
+                outcome_transform=Log(),
+            )
+
             models.append(model)
             mll = ExactMarginalLogLikelihood(model.likelihood, model)
 
         model = ModelListGP(*models)
         mll = SumMarginalLogLikelihood(model.likelihood, model)
         return mll, model
-    
-    
+
     def evaluate(
         self,
         X,
@@ -132,7 +174,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         rho_S, drho_S = None, None  # noise std
 
         model = self.bo_model
-        
+
         post = self.bo_model.posterior(X)
         # negative because botorch assumes maximization (undo previous negative)
         F = -post.mean.squeeze(-1).detach().cpu().numpy()
@@ -142,7 +184,7 @@ class BoTorchSurrogateModel(SurrogateModel):
             noise_post = self.noise_model.posterior(X)
             rho_F = noise_post.mean.squeeze(-1).detach().cpu().numpy()
             rho_S = noise_post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
-            
+
             # if isinstance(model.likelihood, LikelihoodList):
             #     rho_F = np.zeros_like(F)
             #     rho_S = np.zeros_like(S)
@@ -179,7 +221,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                     jac_F = torch.autograd.functional.jacobian(
                         lambda x: -m.posterior(x).mean.T, X
                     )
-                    dF[...,i] = (
+                    dF[..., i] = (
                         jac_F.diagonal(dim1=0, dim2=2)
                         .transpose(0, -1)
                         .transpose(1, 2)
@@ -192,7 +234,7 @@ class BoTorchSurrogateModel(SurrogateModel):
                         jac_S = torch.autograd.functional.jacobian(
                             lambda x: m.posterior(x).variance.sqrt().T, X
                         )
-                        dS[:,i] = (
+                        dS[:, i] = (
                             jac_S.diagonal(dim1=0, dim2=2)
                             .transpose(0, -1)
                             .transpose(1, 2)
@@ -217,60 +259,63 @@ class BoTorchSurrogateModel(SurrogateModel):
 
         return out
 
+
 class BoTorchSurrogateModelMean(BoTorchSurrogateModel):
 
     # last objective is the "deterministic" one
-    
+
     def initialize_model(self, train_x, train_y, train_rho=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
         train_y_var = train_rho + 1e-10
-        
+
         models = []
-        for i in range(self.n_obj-1):
+        for i in range(self.n_obj - 1):
             model = CustomHeteroskedasticSingleTaskGP(
                 train_X=train_x,
-                train_Y=train_y_mean[..., i:i+1],
-                train_Yvar=train_y_var[..., i:i+1],
+                train_Y=train_y_mean[..., i : i + 1],
+                train_Yvar=train_y_var[..., i : i + 1],
                 input_transform=self.input_transform,
                 outcome_transform=Standardize(m=1),
-            )            
-            
+            )
+
             models.append(model)
-        
+
         model = ModelListGP(*models)
         mll = SumMarginalLogLikelihood(model.likelihood, model)
-        
+
         class LinearMean(gpytorch.means.Mean):
-            def __init__(self):        
+            def __init__(self):
                 super(LinearMean, self).__init__()
-                
+
             def forward(self, x):
                 """Your forward method."""
                 return x[..., 1]
-            
+
         model_mean = SingleTaskGP(
             train_X=train_x,
             train_Y=train_y_mean[..., -1:],
-            train_Yvar=train_y_var[..., -1:]*0.0,
-            likelihood= gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-10)),
+            train_Yvar=train_y_var[..., -1:] * 0.0,
+            likelihood=gpytorch.likelihoods.GaussianLikelihood(
+                noise_constraint=gpytorch.constraints.GreaterThan(1e-10)
+            ),
             input_transform=self.input_transform,
             # outcome_transform=Standardize(m=1),
             mean_module=LinearMean(),
             covar_module=ZeroKernel(),
         )
         model_mean.likelihood.noise_covar.noise = 1e-10
-        
+
         models.append(model_mean)
         model = ModelListGP(*models)
-        
+
         if self.state_dict is not None:
             try:
-                #replace each input_transform with the one from the new model
+                # replace each input_transform with the one from the new model
                 for i, m in enumerate(model.models):
-                    self.bo_model.models[i].input_transform = m.input_transform 
+                    self.bo_model.models[i].input_transform = m.input_transform
                 self.state_dict = self.bo_model.state_dict()
-                
+
                 model.load_state_dict(self.state_dict, strict=False)
             except Exception as e:
                 print(e)

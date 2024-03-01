@@ -11,6 +11,12 @@ class SurrogateModel(ABC):
     def __init__(self, n_var, n_obj):
         self.n_var = n_var
         self.n_obj = n_obj
+        
+    def save(self, path):
+        '''
+        Save the surrogate model to file
+        '''
+        pass
 
     @abstractmethod
     def fit(self, X, Y):
