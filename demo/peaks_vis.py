@@ -1,7 +1,23 @@
 import numpy as np
 
 # from ..problems import RiskyProblem
-from mobo.utils import calculate_var
+
+from scipy.stats import norm
+
+# from ..mobo.utils import calculate_var
+def calculate_var(mean, std=None, variance=None, alpha=0.9):
+
+    if std is None:
+        if variance is None:
+            raise ValueError("Either std or variance should be provided")
+        std = np.sqrt(variance)
+    
+    # Calculate the z-score for the given alpha level
+    z_score = norm.ppf(alpha)
+
+    # Calculate mVaR for each variable
+    var = mean + z_score * std
+    return var
 
 class Peaks:
 
@@ -114,7 +130,7 @@ class Peaks:
 
     def f(self, X):
         x1, x2 = X[:, 0], X[:, 1]
-        y1 = self.brannin_function(x1, x2)
+        y1 = self.brannin_function(x1, np.sin(x2)**2)
         y2 = self.styblinski_tang_function(x1, x2)
 
         return np.stack([y1, y2], axis=-1)
