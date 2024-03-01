@@ -321,6 +321,10 @@ class DataExport:
         for dataframe, filename in zip(dataframes, filenames):
             filepath = os.path.join(self.result_dir, filename + ".csv")
             dataframe.to_csv(filepath, index=False)
+            
+        self.optimizer.surrogate_model.save(self.result_dir)
+            
+
 
     def write_truefront_csv(self, truefront_list):
         """
