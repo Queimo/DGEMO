@@ -393,6 +393,8 @@ def main():
             yaxis_title='f2',
             xaxis = dict(range=plot_range_x),
             yaxis = dict(range=plot_range_y),
+            # orthographic projection
+            aspectmode='cube',
         )
         if n_obj > 2:
             scene_dict['zaxis_title'] = 'f3'
