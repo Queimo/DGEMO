@@ -113,10 +113,7 @@ class MOBOEXP(ALGO):
 
         # statistics
         self.global_timer.log("Total runtime", reset=False)
-        print(
-            "Total evaluations: %d, hypervolume: %.4f\n"
-            % (self.sample_num, self.status["hv"])
-        )
+        print(f"Total evaluations: {self.sample_num}, mVaR hypervolume: {self.status['mvar_hv']:.4f}, hypervolume: {self.status['hv']:.4f}")
 
         # return new data iteration by iteration
         return X_next, Y_next, rho_next, Y_next_pred_mean, Y_next_pred_std, acquisition
@@ -183,7 +180,7 @@ if __name__ == "__main__":
     
     args.algo = algo_name
     args.problem = 'exp4d'
-    args.n_iter = 4
+    args.n_iter = 7
     args.n_init_sample = 12
     args.batch_size = 2
     args.subfolder = 'optimization_3b1'
