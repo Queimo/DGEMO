@@ -91,6 +91,9 @@ class MOBOEXP(ALGO):
             acquisition, _, _ = self.acquisition.evaluate(val)
         
         else:
+            print("ONLY RECORDED DATA \n")
+            print("ONLY RECORDED DATA \n")
+            print("ONLY RECORDED DATA \n")
             
             # only solve for current pareto front with NSGA of gp
             solution = self.solver.nsga2_solve(surr_problem, X, Y)
@@ -130,6 +133,8 @@ def run_experiment(args, framework_args):
     problem, true_pfront, X_init, Y_init, rho_init = build_problem(
         args.problem, args.n_var, args.n_obj, args.n_init_sample, args.n_process
     )
+    
+    
     args.n_var, args.n_obj = problem.n_var, problem.n_obj
 
     ref_point_handler = RefPoint(
@@ -143,7 +148,12 @@ def run_experiment(args, framework_args):
     optimizer = MOBOEXP(
         problem, args.n_iter, ref_point_handler, framework_args, batch_size=args.batch_size
     )
+    
+    dataset = problem.df_mean_var
 
+    assert args.n_init_sample <= len(dataset), "Initial sample size is larger than the available data"
+    assert args.n_iter*args.batch_size + args.n_init_sample == len(dataset) + args.batch_size, "Total number of iterations and batch size is not equal to the total number of data points"
+    
     # save arguments & setup logger
     save_args(args, framework_args)
     print(problem, optimizer, sep="\n")
@@ -180,10 +190,10 @@ if __name__ == "__main__":
     
     args.algo = algo_name
     args.problem = 'exp4d'
-    args.n_iter = 7
+    args.n_iter = 3
     args.n_init_sample = 12
     args.batch_size = 2
-    args.subfolder = 'optimization_3b1'
+    args.subfolder = 'optimization_4'
     framework_args["solver"]["batch_size"] = args.batch_size
     framework_args["selection"]["batch_size"] = args.batch_size
 
