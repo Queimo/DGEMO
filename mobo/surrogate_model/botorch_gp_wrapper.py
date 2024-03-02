@@ -107,7 +107,7 @@ class BoTorchSurrogateModel(SurrogateModel):
         self._fit(mll, X_torch, Y_torch, rho_torch)
         self._fit(mll_noise, X_torch, rho_torch, torch.zeros_like(rho_torch))
 
-    def initialize_model(self, train_x, train_y, train_rho=None):
+    def initialize_model(self, train_x, train_y, train_rho=None, state_dict=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
         train_y_var = train_rho + 1e-10
@@ -126,11 +126,15 @@ class BoTorchSurrogateModel(SurrogateModel):
             mll = ExactMarginalLogLikelihood(model.likelihood, model)
 
         model = ModelListGP(*models)
+        
+        if state_dict is not None:
+            model.load_state_dict(state_dict)
+        
         mll = SumMarginalLogLikelihood(model.likelihood, model)
-
+        
         return mll, model
 
-    def initialize_noise_model(self, train_x, train_y, train_rho=None):
+    def initialize_noise_model(self, train_x, train_y, train_rho=None, state_dict=None):
         train_y_mean = train_y + 1e-6
         # train_y_var = torch.tensor(train_rho, **tkwargs) + 1e-6
 
@@ -154,7 +158,12 @@ class BoTorchSurrogateModel(SurrogateModel):
             mll = ExactMarginalLogLikelihood(model.likelihood, model)
 
         model = ModelListGP(*models)
+        
+        if state_dict is not None:
+            model.load_state_dict(state_dict)
+            
         mll = SumMarginalLogLikelihood(model.likelihood, model)
+        
         return mll, model
 
     def evaluate(
@@ -184,34 +193,6 @@ class BoTorchSurrogateModel(SurrogateModel):
             noise_post = self.noise_model.posterior(X)
             rho_F = noise_post.mean.squeeze(-1).detach().cpu().numpy()
             rho_S = noise_post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
-
-            # if isinstance(model.likelihood, LikelihoodList):
-            #     rho_F = np.zeros_like(F)
-            #     rho_S = np.zeros_like(S)
-            #     for i, likelihood in enumerate(model.likelihood.likelihoods):
-            #         if hasattr(likelihood.noise_covar, "noise_model"):
-            #             rho_post = likelihood.noise_covar.noise_model.posterior(X)
-            #             rho_F_i = rho_post.mean.detach().cpu().numpy()
-            #             rho_S_i = rho_post.variance.sqrt().detach().cpu().numpy()
-            #             # if F.shape[1] == 1: does not work for 1d
-            #             if F.ndim == 1:
-            #                 rho_F = rho_F_i
-            #                 rho_S = rho_S_i
-            #             else:
-            #                 rho_F[:, i] = rho_F_i.squeeze(-1)
-            #                 rho_S[:, i] = rho_S_i.squeeze(-1)
-            # else:
-            #     rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
-            #     rho_F = rho_post.mean.detach().cpu().numpy()
-            #     rho_S = rho_post.variance.sqrt().detach().cpu().numpy()
-
-        # #simplest 2d --> 2d test problem
-        # def f(X):
-        #     return torch.stack([X[:, 0]**2 + 0.1*X[:, 1]**2 , -X[:, 1]**2 -0.1*(X[:, 0]**2)]).T
-        # X_toy = torch.tensor([[0.5, 0.5], [1., 1.], [2., 2.]], requires_grad=True)
-        # jacobian_mean = torch.autograd.functional.jacobian(f, X_toy)
-        # # goal 3 x 2 x 2
-        # jac_batch = jacobian_mean.diagonal(dim1=0,dim2=2).transpose(0,-1).transpose(1,2).numpy()
 
         if calc_gradient:
             if isinstance(model.likelihood, LikelihoodList):
