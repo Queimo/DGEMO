@@ -190,7 +190,7 @@ if __name__ == "__main__":
     
     args.algo = algo_name
     args.problem = 'exp4d'
-    args.n_iter = 5
+    args.n_iter = 6
     args.n_init_sample = 12
     args.batch_size = 2
     args.subfolder = 'optimization_4'
