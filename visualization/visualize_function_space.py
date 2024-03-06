@@ -85,7 +85,7 @@ def main():
         approx_all_i = get_data_of_step(approx_all_df, 1)
         n_grid = int(np.sqrt(approx_all_i.shape[0]))
 
-        rows = n_obj-1
+        rows = n_obj-1 if "det" in algo else n_obj
         cols = 4
 
         fig = make_subplots(
