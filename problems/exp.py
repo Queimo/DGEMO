@@ -86,6 +86,8 @@ class Experiment4D(RiskyProblem):
         self.num_objectives = 3
         
         all_batches_paths = list(pathlib.Path("./problems/data/MT-KBH-004/").rglob("XRD+synthsis_data_b*.xlsx"))
+        # sort based on batch number (can be multi digit)
+        all_batches_paths.sort(key=lambda x: int(x.stem.split("_")[-1][1:]))
         df = pd.read_excel(all_batches_paths[-1])
         df = df[["id", "C_ZnCl", "C_NaOH/C_ZnCl", "C_NaOH" ,"Aspect Ratio", "Peak Ratio", "Q_AC", "Q_AIR", "N_ZnO"]]
         self.obj_cols = ["Peak Ratio_mean", "Aspect Ratio_mean", "N_ZnO_mean"]
