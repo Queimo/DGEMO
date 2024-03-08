@@ -25,6 +25,7 @@ import wandb
 from mobo.algorithms import RAqNEHVI, qNEHVI, MARS, RAqLogNEHVI, MARSdet, qNEHVIdet
 
 # algo_name = 'raqlognehvidet'
+# algo_name = 'raqnehvi'
 algo_name = 'marsdet'
 # algo_name = 'mars'
 ALGO = get_algorithm(algo_name)
@@ -134,6 +135,13 @@ def run_experiment(args, framework_args):
         args.problem, args.n_var, args.n_obj, args.n_init_sample, args.n_process
     )
     
+    dataset = problem.df_mean_var
+
+    assert args.n_init_sample <= len(dataset), "Initial sample size is larger than the available data"
+    assert args.n_iter*args.batch_size + args.n_init_sample == len(dataset) + args.batch_size, f"Total number of iterations and batch size is not equal to the total number of data points, {args.n_iter*args.batch_size + args.n_init_sample} != {len(dataset) + args.batch_size}"
+    
+    if args.only_recorded_data:
+        args.n_iter -= 1
     
     args.n_var, args.n_obj = problem.n_var, problem.n_obj
 
@@ -149,10 +157,6 @@ def run_experiment(args, framework_args):
         problem, args.n_iter, ref_point_handler, framework_args, batch_size=args.batch_size
     )
     
-    dataset = problem.df_mean_var
-
-    assert args.n_init_sample <= len(dataset), "Initial sample size is larger than the available data"
-    assert args.n_iter*args.batch_size + args.n_init_sample == len(dataset) + args.batch_size, "Total number of iterations and batch size is not equal to the total number of data points"
     
     # save arguments & setup logger
     save_args(args, framework_args)
@@ -191,9 +195,10 @@ if __name__ == "__main__":
     args.algo = algo_name
     args.problem = 'exp4d'
     args.n_iter = 12
+    args.only_recorded_data = False
     args.n_init_sample = 12
     args.batch_size = 2
-    args.subfolder = 'optimization_4'
+    args.subfolder = 'unroll_new'
     framework_args["solver"]["batch_size"] = args.batch_size
     framework_args["selection"]["batch_size"] = args.batch_size
 

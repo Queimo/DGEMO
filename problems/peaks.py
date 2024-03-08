@@ -3,7 +3,7 @@ from .problem import RiskyProblem
 
 class Peaks(RiskyProblem):
 
-    def __init__(self, sigma=0., repeat_eval=1):
+    def __init__(self, sigma=0.7, repeat_eval=10):
         
         self.sigma = sigma
         self.repeat_eval = repeat_eval
