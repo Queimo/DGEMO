@@ -40,11 +40,13 @@ def worker(problem, algo, seed, datetime_str):
     return runtime, problem, algo, seed
 
 def main():
-    ray.init(local_mode=True)
+    # ray.init(local_mode=True)
+    ray.init()
     parser = argparse.ArgumentParser()
     parser.add_argument('--problem', type=str, default=["peaks"], nargs='+', help='problems to test')
     parser.add_argument('--algo', type=str, default=["mars"], nargs='+', help='algorithms to test')
-    parser.add_argument('--n-seed', type=int, default=1, help='number of different seeds')
+    parser.add_argument('--n-seed', type=int, default=3, help='number of different seeds')
+    parser.add_argument('--subfolder', type=str, default='default', help='subfolder name for storing results, directly store under result/ as default')
        
     #parse unknown args
     args, _ = parser.parse_known_args()

@@ -9,8 +9,8 @@ Here we speficy different argument parsers to avoid argument conflict between in
 '''
 
 alpha = 0.9
-n_init_sample = 50
-n_iter = 5
+n_init_sample = 6
+n_iter = 20
 batch_size = 1
 n_w = 11
  
