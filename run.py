@@ -11,9 +11,8 @@ MAX_NUM_PENDING_TASKS = 11
 
 
 @ray.remote
-def worker(problem, algo, seed, datetime_str):
+def worker(problem, algo, seed, datetime_str, args, framework_args):
 
-    args, framework_args = get_args()
     
     #change problem, algo, seed
     args.problem = problem
@@ -54,6 +53,8 @@ def main():
     start_time = time()
     tasks = []
     
+    args_task, framework_args = get_args()
+    
     datetime_str = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     for seed in range(args.n_seed):
@@ -67,7 +68,7 @@ def main():
                         print(f'problem {ret_problem} algo {ret_algo} seed {ret_seed} done, time: {time() - start_time:.2f}s, runtime: {runtime:.2f}s')
 
                 sleep(1)
-                task = worker.remote(problem, algo, seed, datetime_str)
+                task = worker.remote(problem, algo, seed, datetime_str, args_task, framework_args)
                 tasks.append(task)
                 print(f'problem {problem} algo {algo} seed {seed} started')
                 gc.collect()
