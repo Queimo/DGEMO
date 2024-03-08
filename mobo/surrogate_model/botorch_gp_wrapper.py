@@ -117,7 +117,7 @@ class BoTorchSurrogateModel(SurrogateModel):
             model = SingleTaskGP(
                 train_X=train_x,
                 train_Y=train_y_mean[..., i : i + 1],
-                # train_Yvar=train_y_var[..., i:i+1],
+                train_Yvar=train_y_var[..., i:i+1],
                 input_transform=self.input_transform,
                 outcome_transform=Standardize(m=1),
             )

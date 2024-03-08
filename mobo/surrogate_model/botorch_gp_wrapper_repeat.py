@@ -14,7 +14,7 @@ from botorch.models.gp_regression import (
 from botorch.models.model_list_gp_regression import ModelListGP
 from botorch.models.transforms.outcome import Standardize
 from botorch.models.transforms.input import InputPerturbation
-from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood
+from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood, ExactMarginalLogLikelihood
 
 from gpytorch.likelihoods import LikelihoodList
 from botorch.acquisition.objective import ExpectationPosteriorTransform
@@ -41,6 +41,33 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
         self.input_transform = InputPerturbation(
             torch.zeros((self.n_w, self.n_var), **tkwargs)
         )
+
+    def initialize_model(self, train_x, train_y, train_rho=None, state_dict=None):
+        # define models for objective and constraint
+        train_y_mean = -train_y  # negative because botorch assumes maximization
+        train_y_var = train_rho + 1e-10
+
+        models = []
+        for i in range(train_y_mean.shape[1]):
+            model = SingleTaskGP(
+                train_X=train_x,
+                train_Y=train_y_mean[..., i : i + 1],
+                # train_Yvar=train_y_var[..., i:i+1],
+                input_transform=self.input_transform,
+                outcome_transform=Standardize(m=1),
+            )
+
+            models.append(model)
+            mll = ExactMarginalLogLikelihood(model.likelihood, model)
+
+        model = ModelListGP(*models)
+        
+        if state_dict is not None:
+            model.load_state_dict(state_dict)
+        
+        mll = SumMarginalLogLikelihood(model.likelihood, model)
+        
+        return mll, model
 
     def evaluate(
         self,
