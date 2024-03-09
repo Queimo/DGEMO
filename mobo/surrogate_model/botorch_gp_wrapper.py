@@ -59,15 +59,12 @@ class BoTorchSurrogateModel(SurrogateModel):
 
     def __init__(self, n_var, n_obj, **kwargs):
         self.bo_model = None
-        self.noise_model = None
         self.input_transform = None
         super().__init__(n_var, n_obj)
         
     def save(self, path):
         self.state_dict = self.bo_model.state_dict()
         torch.save(self.state_dict, Path(path) / "state_dict.pt")
-        self.state_dict_noise = self.noise_model.state_dict()
-        torch.save(self.state_dict_noise, Path(path) / "state_dict_noise.pt")
         
         
 
@@ -100,12 +97,9 @@ class BoTorchSurrogateModel(SurrogateModel):
             )
 
         mll, self.bo_model = self.initialize_model(X_torch, Y_torch, rho_torch)
-        mll_noise, self.noise_model = self.initialize_noise_model(
-            X_torch, rho_torch, torch.zeros_like(rho_torch)
-        )
 
-        self._fit(mll, X_torch, Y_torch, rho_torch)
-        self._fit(mll_noise, X_torch, rho_torch, torch.zeros_like(rho_torch))
+        self._fit(mll)
+        # self._fit(mll_noise, X_torch, rho_torch, torch.zeros_like(rho_torch))
 
     def initialize_model(self, train_x, train_y, train_rho=None, state_dict=None):
         # define models for objective and constraint
@@ -114,7 +108,7 @@ class BoTorchSurrogateModel(SurrogateModel):
 
         models = []
         for i in range(train_y_mean.shape[1]):
-            model = SingleTaskGP(
+            model = HeteroskedasticSingleTaskGP(
                 train_X=train_x,
                 train_Y=train_y_mean[..., i : i + 1],
                 train_Yvar=train_y_var[..., i:i+1],
@@ -130,38 +124,6 @@ class BoTorchSurrogateModel(SurrogateModel):
         if state_dict is not None:
             model.load_state_dict(state_dict)
         
-        mll = SumMarginalLogLikelihood(model.likelihood, model)
-        
-        return mll, model
-
-    def initialize_noise_model(self, train_x, train_y, train_rho=None, state_dict=None):
-        train_y_mean = train_y + 1e-6
-        # train_y_var = torch.tensor(train_rho, **tkwargs) + 1e-6
-
-        models = []
-        for i in range(train_y_mean.shape[1]):
-            model = SingleTaskGP(
-                train_X=train_x,
-                train_Y=train_y_mean[..., i : i + 1],
-                # train_Yvar=train_y_var[..., i:i+1],
-                # likelihood=GaussianLikelihood(
-                #     noise_prior=SmoothedBoxPrior(-3, 5, 0.5, transform=torch.log),
-                #     noise_constraint=GreaterThan(
-                #         MIN_INFERRED_NOISE_LEVEL, transform=None, initial_value=1.0
-                #     ),
-                # ),
-                input_transform=self.input_transform,
-                outcome_transform=Log(),
-            )
-
-            models.append(model)
-            mll = ExactMarginalLogLikelihood(model.likelihood, model)
-
-        model = ModelListGP(*models)
-        
-        if state_dict is not None:
-            model.load_state_dict(state_dict)
-            
         mll = SumMarginalLogLikelihood(model.likelihood, model)
         
         return mll, model
@@ -190,10 +152,29 @@ class BoTorchSurrogateModel(SurrogateModel):
         S = post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
         if noise:
-            noise_post = self.noise_model.posterior(X)
-            rho_F = noise_post.mean.squeeze(-1).detach().cpu().numpy()
-            rho_S = noise_post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
+            # noise_post = self.noise_model.posterior(X)
+            # rho_F = noise_post.mean.squeeze(-1).detach().cpu().numpy()
+            # rho_S = noise_post.variance.sqrt().squeeze(-1).detach().cpu().numpy()
 
+            if isinstance(model.likelihood, LikelihoodList):
+                rho_F = np.zeros_like(F)
+                rho_S = np.zeros_like(S)
+                for i, likelihood in enumerate(model.likelihood.likelihoods):
+                    if hasattr(likelihood.noise_covar, "noise_model"):
+                        rho_post = likelihood.noise_covar.noise_model.posterior(X)
+                        rho_F_i = rho_post.mean.detach().cpu().numpy()
+                        rho_S_i = rho_post.variance.sqrt().detach().cpu().numpy()
+                        if F.shape[1] == 1:
+                            rho_F = rho_F_i
+                            rho_S = rho_S_i
+                        else:
+                            rho_F[:, i] = rho_F_i.squeeze(-1)
+                            rho_S[:, i] = rho_S_i.squeeze(-1)
+            else:
+                rho_post = model.likelihood.noise_covar.noise_model.posterior(X)
+                rho_F = rho_post.mean.detach().cpu().numpy()
+                rho_S = rho_post.variance.sqrt().detach().cpu().numpy()
+                
         if calc_gradient:
             if isinstance(model.likelihood, LikelihoodList):
                 dF = np.zeros((X.shape[0], F.shape[1], X.shape[1]))

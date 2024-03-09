@@ -12,7 +12,7 @@ from botorch.models.gp_regression import (
 )
 
 from botorch.models.model_list_gp_regression import ModelListGP
-from botorch.models.transforms.outcome import Standardize
+from botorch.models.transforms.outcome import Standardize, Log
 from botorch.models.transforms.input import InputPerturbation
 from gpytorch.mlls.sum_marginal_log_likelihood import SumMarginalLogLikelihood, ExactMarginalLogLikelihood
 
@@ -27,6 +27,7 @@ import gpytorch
 import torch
 
 from .botorch_helper import ZeroKernel, CustomHeteroskedasticSingleTaskGP
+from pathlib import Path
 
 
 class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
@@ -38,10 +39,18 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
         super().__init__(n_var, n_obj)
         self.n_w = kwargs["n_w"]
         self.alpha = kwargs["alpha"]
+        self.noise_model = None
         self.input_transform = InputPerturbation(
             torch.zeros((self.n_w, self.n_var), **tkwargs)
         )
 
+    def save(self, path):
+        self.state_dict = self.bo_model.state_dict()
+        torch.save(self.state_dict, Path(path) / "state_dict.pt")
+        self.state_dict_noise = self.noise_model.state_dict()
+        torch.save(self.state_dict_noise, Path(path) / "state_dict_noise.pt")
+        
+        
     def initialize_model(self, train_x, train_y, train_rho=None, state_dict=None):
         # define models for objective and constraint
         train_y_mean = -train_y  # negative because botorch assumes maximization
@@ -58,16 +67,46 @@ class BoTorchSurrogateModelReapeat(BoTorchSurrogateModel):
             )
 
             models.append(model)
-            mll = ExactMarginalLogLikelihood(model.likelihood, model)
 
         model = ModelListGP(*models)
+        
+        noise_model_list = self.initialize_noise_model(train_x, train_rho)
+        self.noise_model = ModelListGP(*noise_model_list)
+        
+        models_for_mll = models + noise_model_list
+        mll_model = ModelListGP(*models_for_mll)
+        
         
         if state_dict is not None:
             model.load_state_dict(state_dict)
         
-        mll = SumMarginalLogLikelihood(model.likelihood, model)
+        mll = SumMarginalLogLikelihood(mll_model.likelihood, mll_model)
         
         return mll, model
+
+    def initialize_noise_model(self, train_x, train_y, train_rho=None):
+        train_y_mean = train_y + 1e-6
+        # train_y_var = torch.tensor(train_rho, **tkwargs) + 1e-6
+
+        models = []
+        for i in range(train_y_mean.shape[1]):
+            model = SingleTaskGP(
+                train_X=train_x,
+                train_Y=train_y_mean[..., i : i + 1],
+                # train_Yvar=train_y_var[..., i:i+1],
+                # likelihood=GaussianLikelihood(
+                #     noise_prior=SmoothedBoxPrior(-3, 5, 0.5, transform=torch.log),
+                #     noise_constraint=GreaterThan(
+                #         MIN_INFERRED_NOISE_LEVEL, transform=None, initial_value=1.0
+                #     ),
+                # ),
+                input_transform=self.input_transform,
+                outcome_transform=Log(),
+            )
+
+            models.append(model)
+        
+        return models
 
     def evaluate(
         self,
