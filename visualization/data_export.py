@@ -361,6 +361,7 @@ class DataExport:
         data = {}
         data["iter"] = self.iter
         data["hypervolume"] = self.export_data["Hypervolume_indicator"].iloc[-1]
+        data["mvar_hypervolume"] = self.export_data["MVaR_Hypervolume_indicator"].iloc[-1]
 
         return data
 
