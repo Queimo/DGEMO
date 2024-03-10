@@ -262,6 +262,19 @@ class BoTorchSurrogateModelReapeatMean(BoTorchSurrogateModelReapeat):
         models.append(model_mean)
         model = ModelListGP(*models)
         
+        noise_model_list = [*self.noise_model.models]
+        
+        zero_noise_model = SingleTaskGP(
+            train_X=train_x,
+            train_Y=train_y_var[..., -1:]*0.0,
+            train_Yvar=train_y_var[..., -1:]*0.0,
+            likelihood= gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-10)),
+            input_transform=self.input_transform,
+            covar_module=ZeroKernel(),
+        )
+        
+        self.noise_model = ModelListGP(*noise_model_list, zero_noise_model)
+        
         return mll, model
 
         
