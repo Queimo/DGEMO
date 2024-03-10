@@ -3,6 +3,7 @@
 wandb/
 result/
 good results/
+result_old/
 *.html
 
 # Byte-compiled / optimized / DLL files
