@@ -3,23 +3,6 @@ import pandas as pd
 
 from itertools import cycle
 
-from scipy.stats import norm
-import numpy as np
-
-
-def calculate_var(mean, std=None, variance=None, alpha=0.9):
-
-    if std is None:
-        if variance is None:
-            raise ValueError("Either std or variance should be provided")
-        std = np.sqrt(variance)
-
-    # Calculate the z-score for the given alpha level
-    z_score = norm.ppf(alpha)
-
-    # Calculate mVaR for each variable
-    var = mean + z_score * std
-    return var
 
 
 def get_problem_dir(args):

@@ -7,7 +7,7 @@ import plotly.express as px
 import numpy as np
 import pandas as pd
 from arguments import get_vis_args
-from utils import get_problem_dir, get_algo_names, defaultColors, calculate_var
+from utils import get_problem_dir, get_algo_names, defaultColors
 import yaml
 
 
@@ -57,15 +57,6 @@ def main():
         fig = go.Figure()
 
         approx_all_df = pd.read_csv(f"{problem_dir}/{algo}/{seed}/ApproximationAll.csv")
-
-        # # calculate VaR
-        # if "rho_F_1" in approx_all_df.columns:
-        #     alpha = yml_list[kk]["solver"]["alpha"]
-        #     for i in range(1, n_obj + 1):
-        #         approx_all_df[f"mvar_F_{i}"] = calculate_var(
-        #             approx_all_df[f"F_{i}"], std=approx_all_df[f"rho_F_{i}"], alpha=alpha
-        #         )
-
         # label the sample
         def makeLabel(dfRow):
             retStr = "Data:<br>"
