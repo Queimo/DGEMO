@@ -49,7 +49,7 @@ class MOBOEXP(ALGO):
 
         # data normalization
         self.transformation.fit(self.X, self.Y)
-        X, Y, rho = self.transformation.do(self.X, self.Y, self.rho)
+        X = self.transformation.do(self.X)
         Y, rho = self.Y, self.rho
         # X, Y, rho = self.transformation.do(self.X, self.Y, self.rho)
 

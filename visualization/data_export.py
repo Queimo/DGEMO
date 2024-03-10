@@ -252,7 +252,9 @@ class DataExport:
             # add iteration id and x1, x2 columns
             d4["iterID"] = np.full(n_grid**2, self.iter, dtype=int)
 
-            X_mesh, Y_mesh, rho_mesh = self.transformation.undo(x_mesh, val["F"], val["rho_F"])
+            X_mesh, = self.transformation.undo(x_mesh)
+            Y_mesh = val["F"]
+            rho_mesh = val["rho_F"]
         
             mvar_F_mesh = calculate_var(Y_mesh, variance=rho_mesh, alpha=self.alpha)
 
