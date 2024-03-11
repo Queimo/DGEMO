@@ -7,50 +7,52 @@ import torch
 
 
 def get_problem_options():
-    problems = [
-        ('zdt1', ZDT1),
-        ('zdt2', ZDT2),
-        ('zdt3', ZDT3),
-        ('dtlz1', DTLZ1),
-        ('dtlz2', DTLZ2),
-        ('dtlz3', DTLZ3),
-        ('dtlz4', DTLZ4),
-        ('dtlz5', DTLZ5),
-        ('dtlz6', DTLZ6),
-        ('oka1', OKA1),
-        ('oka2', OKA2),
-        ('vlmop2', VLMOP2),
-        ('vlmop3', VLMOP3),
-        ('re1', RE1),
-        ('re2', RE2),
-        ('re3', RE3),
-        ('re4', RE4),
-        ('re5', RE5),
-        ('re6', RE6),
-        ('re7', RE7),
-        ('mixingproblem', MixingProblem),
-        ('k1', K1),
-        ('k2', K2),
-        ('k3', K3),
-        ('k4', K4),
-        ('k5', K5),
-        ('k6', K6),
-        ('k7', K7),
-        ('k8', K8),
-        ('k9', K9),
-        ('peaks', Peaks),
-        ('peaksS0', Peaks0),
-        ('peaks3', Peaks3),
-        ('peaksS5R3', PeaksS5R3),
-        ('exp', Experiment),
-        ('exp4d', Experiment4D),
-        ('peaks4d', Peaks4D)
-    ]
-    return problems
+    problems_dict = {
+    'zdt1': ZDT1,
+    'zdt2': ZDT2,
+    'zdt3': ZDT3,
+    'dtlz1': DTLZ1,
+    'dtlz2': DTLZ2,
+    'dtlz3': DTLZ3,
+    'dtlz4': DTLZ4,
+    'dtlz5': DTLZ5,
+    'dtlz6': DTLZ6,
+    'oka1': OKA1,
+    'oka2': OKA2,
+    'vlmop2': VLMOP2,
+    'vlmop3': VLMOP3,
+    're1': RE1,
+    're2': RE2,
+    're3': RE3,
+    're4': RE4,
+    're5': RE5,
+    're6': RE6,
+    're7': RE7,
+    'mixingproblem': MixingProblem,
+    'k1': K1,
+    'k2': K2,
+    'k3': K3,
+    'k4': K4,
+    'k5': K5,
+    'k6': K6,
+    'k7': K7,
+    'k8': K8,
+    'k9': K9,
+    'peaks': Peaks,
+    'peaksS0': Peaks0,
+    'peaks3': Peaks3,
+    'peaksS5R3': PeaksS5R3,
+    'exp': Experiment,
+    'exp4d': Experiment4D,
+    'peaks4d': Peaks4D
+}
+
+    return problems_dict
 
 
 def get_problem(name, *args, d={}, **kwargs):
-    return get_from_list(get_problem_options(), name.lower(), args, {**d, **kwargs})
+    return get_problem_options()[name](*args, **d, **kwargs)
+
 
 
 def generate_initial_samples(problem, n_sample):
