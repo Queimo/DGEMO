@@ -138,3 +138,5 @@ dmypy.json
 *.pdf
 *.svg
 *.png
+*.jpg
+*.gif

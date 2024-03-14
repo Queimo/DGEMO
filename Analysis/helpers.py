@@ -50,9 +50,9 @@ def get_dfs(exp):
         df_mean_std.rename(columns={col: col + "_mean"}, inplace=True)
 
 
-    df_mean_std["id_idx"] = df_mean_std.index
+    df_mean_std["id"] = df_mean_std.index
 
-    df_mean_std["initial_sampling"] = df_mean_std["id_idx"] < 12
+    df_mean_std["initial_sampling"] = df_mean_std["id"] < 12
     df["initial_sampling"] = df["id"] < 12
     df_mean_std["zero"] = 0
 
